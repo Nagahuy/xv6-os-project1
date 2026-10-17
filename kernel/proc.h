@@ -103,4 +103,5 @@ struct proc {
   char name[16];               // Process name (debugging)
   uint sandbox_mask;
   int sandbox_set;
+  char sandbox_path[MAXPATH];
 };

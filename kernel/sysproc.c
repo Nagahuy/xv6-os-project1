@@ -125,6 +125,7 @@ sys_interpose(void)
   if (argstr(1, path, sizeof(path)) < 0)
     return -1;
 
+  safestrcpy(p->sandbox_path, path, sizeof(p->sandbox_path));
   p->sandbox_mask = (uint)mask;
   p->sandbox_set = 1;
   return 0;

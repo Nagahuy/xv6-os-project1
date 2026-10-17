@@ -126,6 +126,7 @@ found:
   p->state = USED;
   p->sandbox_mask = 0;
   p->sandbox_set = 0;
+  p->sandbox_path[0] = 0;
 
   // Allocate a trapframe page.
   if ((p->trapframe = (struct trapframe *)kalloc()) == 0) {
@@ -171,6 +172,7 @@ freeproc(struct proc *p)
   p->xstate = 0;
   p->sandbox_mask = 0;
   p->sandbox_set = 0;
+  p->sandbox_path[0] = 0;
   p->state = UNUSED;
 }
 
@@ -280,6 +282,8 @@ kfork(void)
   np->sz = p->sz;
   np->sandbox_mask = p->sandbox_mask;
   np->sandbox_set = p->sandbox_set;
+  safestrcpy(np->sandbox_path, p->sandbox_path,
+             sizeof(np->sandbox_path));
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);

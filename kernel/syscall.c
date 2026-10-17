@@ -144,8 +144,21 @@ syscall(void)
   num = p->trapframe->a7;
   if (num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     if (num < 32 && (p->sandbox_mask & (1U << num))) {
-      p->trapframe->a0 = -1;
-      return;
+      int allowed = 0;
+
+      if ((num == SYS_open || num == SYS_exec) &&
+        strncmp(p->sandbox_path, "-", MAXPATH) != 0) {
+        char path[MAXPATH];
+
+        if (argstr(0, path, sizeof(path)) >= 0 &&
+            strncmp(path, p->sandbox_path, MAXPATH) == 0)
+          allowed = 1;
+      }
+
+      if (!allowed) {
+        p->trapframe->a0 = -1;
+        return;
+      }
     }
 
     p->trapframe->a0 = syscalls[num]();
