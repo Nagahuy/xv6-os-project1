@@ -60,6 +60,64 @@ main(int argc, char *argv[])
 void
 memdump(char *fmt, char *data, int len)
 {
-  // Your code here.  `data` holds `len` valid bytes.
+  for (; *fmt; fmt++) {
+    int size;
+    switch (*fmt) {
+    case 'i': size = 4; break;
+    case 'p':
+    case 's': size = 8; break;
+    case 'h': size = 2; break;
+    case 'c': size = 1; break;
+    case 'S':
+      // Unlike %s, this never searches past the supplied data.
+      while (len > 0 && *data) {
+        printf("%c", (uchar)*data++);
+        len--;
+      }
+      printf("\n");
+      return; // S describes the remainder of the data.
+    default:
+      printf("memdump: unknown format '%c'\n", *fmt);
+      return;
+    }
+
+    if (len < size) {
+      printf("memdump: not enough data for '%c'\n", *fmt);
+      return;
+    }
+
+    // Copy to aligned locals: a preceding 'c' can leave data unaligned.
+    switch (*fmt) {
+    case 'i': {
+      int value;
+      memmove(&value, data, size);
+      printf("%d\n", value);
+      break;
+    }
+    case 'p': {
+      uint64 value;
+      memmove(&value, data, size);
+      printf("%lx\n", value);
+      break;
+    }
+    case 'h': {
+      short value;
+      memmove(&value, data, size);
+      printf("%d\n", value);
+      break;
+    }
+    case 'c':
+      printf("%c\n", (uchar)*data);
+      break;
+    case 's': {
+      char *value;
+      memmove(&value, data, size);
+      printf("%s\n", value);
+      break;
+    }
+    }
+    data += size;
+    len -= size;
+  }
 
 }
