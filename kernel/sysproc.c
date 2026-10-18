@@ -8,6 +8,14 @@
 #include "vm.h"
 
 uint64
+sys_consolemode(void)
+{
+  int raw;
+  argint(0, &raw);
+  return consolemode(raw);
+}
+
+uint64
 sys_exit(void)
 {
   int n;

@@ -330,6 +330,8 @@ kexit(int status)
   if (p == initproc)
     panic("init exiting");
 
+  consolemode(0); // A killed or exiting console editor must not leave raw mode on.
+
   // Close all open files.
   for (int fd = 0; fd < NOFILE; fd++) {
     if (p->ofile[fd]) {

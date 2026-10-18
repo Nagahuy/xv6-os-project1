@@ -53,7 +53,39 @@ struct {
   uint r; // Read index
   uint w; // Write index
   uint e; // Edit index
+  int rawpid; // Owner of character-at-a-time, no-echo input; 0 = cooked.
 } cons;
+
+// Only the owner may release raw mode. It is not inherited by fork.
+// Shell releases it before running commands; exit/exec also release it.
+int
+consolemode(int raw)
+{
+  struct proc *p = myproc();
+  struct file *f = p->ofile[0];
+
+  if (raw != 0 && raw != 1)
+    return -1;
+  if (raw && (!f || f->type != FD_DEVICE || f->major != CONSOLE ||
+              !f->readable))
+    return -1;
+
+  acquire(&cons.lock);
+  if (cons.rawpid && cons.rawpid != p->pid) {
+    release(&cons.lock);
+    return -1;
+  }
+  if ((!raw && cons.rawpid == 0) || (raw && cons.rawpid == p->pid)) {
+    release(&cons.lock);
+    return 0; // A no-op must not commit an unfinished cooked input line.
+  }
+  cons.rawpid = raw ? p->pid : 0;
+  // Preserve input already queued, including an unfinished cooked line.
+  cons.w = cons.e;
+  wakeup(&cons.r);
+  release(&cons.lock);
+  return 0;
+}
 
 //
 // user write() system calls to the console go here.
@@ -96,7 +128,8 @@ consoleread(int user_dst, uint64 dst, int n)
   while (n > 0) {
     // wait until interrupt handler has put some
     // input into cons.buffer.
-    while (cons.r == cons.w) {
+    while (cons.r == cons.w ||
+           (cons.rawpid && cons.rawpid != myproc()->pid)) {
       if (killed(myproc())) {
         release(&cons.lock);
         return -1;
@@ -109,7 +142,8 @@ consoleread(int user_dst, uint64 dst, int n)
 
     c = cons.buf[cons.r++ % INPUT_BUF_SIZE];
 
-    if (c == C('D')) { // end-of-file
+    int raw = cons.rawpid == myproc()->pid;
+    if (!raw && c == C('D')) { // end-of-file in cooked mode
       if (n < target) {
         // Save ^D for next time, to make sure
         // caller gets a 0-byte result.
@@ -126,7 +160,7 @@ consoleread(int user_dst, uint64 dst, int n)
     dst++;
     --n;
 
-    if (c == '\n') {
+    if (raw || c == '\n') {
       // a whole line has arrived, return to
       // the user-level read().
       break;
@@ -147,6 +181,16 @@ void
 consoleintr(int c)
 {
   acquire(&cons.lock);
+
+  if (cons.rawpid && c != C('P')) {
+    if (c != 0 && cons.e - cons.r < INPUT_BUF_SIZE) {
+      cons.buf[cons.e++ % INPUT_BUF_SIZE] = c;
+      cons.w = cons.e;
+      wakeup(&cons.r);
+    }
+    release(&cons.lock);
+    return; // The user-space editor handles echo, erase, Tab and ESC.
+  }
 
   switch (c) {
   case C('P'): // Print process list.

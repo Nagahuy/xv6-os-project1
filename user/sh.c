@@ -3,6 +3,9 @@
 #include "kernel/types.h"
 #include "user/user.h"
 #include "kernel/fcntl.h"
+#include "kernel/stat.h"
+#include "kernel/fs.h"
+#include "kernel/elf.h"
 
 // Parsed command representation
 #define EXEC  1
@@ -12,6 +15,198 @@
 #define BACK  5
 
 #define MAXARGS 10
+#define MAXLINE 128 // Includes the terminating NUL; matches console capacity.
+#define NHISTORY 10
+
+static int interactive;
+static struct {
+  int number;
+  char line[MAXLINE];
+} history[NHISTORY];
+static int histstart, histcount;
+static int nextnumber = 1;
+
+static int
+histslot(int index)
+{
+  return (histstart + index) % NHISTORY;
+}
+
+static void
+savehistory(char *line)
+{
+  int slot;
+  if (histcount == NHISTORY) {
+    slot = histstart;
+    histstart = (histstart + 1) % NHISTORY;
+  } else {
+    slot = histslot(histcount++);
+  }
+  history[slot].number = nextnumber++;
+  strcpy(history[slot].line, line);
+}
+
+// Store expanded commands, so recalling !! can never recursively recall !!.
+static int
+expandhistory(char *line)
+{
+  if (line[0] != '!')
+    return 0;
+
+  int index = -1;
+  if (strcmp(line, "!!") == 0) {
+    if (histcount == 0) {
+      fprintf(2, "history: no previous command\n");
+      return -1;
+    }
+    index = histcount - 1;
+  } else {
+    int number = 0;
+    char *p = line + 1;
+    if (*p == 0)
+      goto missing;
+    for (; *p; p++) {
+      if (*p < '0' || *p > '9' || number > (0x7fffffff - (*p - '0')) / 10)
+        goto missing;
+      number = number * 10 + (*p - '0');
+    }
+    for (int i = 0; i < histcount; i++)
+      if (history[histslot(i)].number == number)
+        index = i;
+  }
+  if (index < 0)
+    goto missing;
+  strcpy(line, history[histslot(index)].line);
+  printf("%s\n", line);
+  return 0;
+
+missing:
+  fprintf(2, "history: event not found: %s\n", line);
+  return -1;
+}
+
+// Clear only the typed characters, leaving the prompt in place.
+static void
+replaceline(char *buf, int *len, char *replacement)
+{
+  for (int i = 0; i < *len; i++)
+    write(2, "\b \b", 3);
+  strcpy(buf, replacement);
+  *len = strlen(buf);
+  write(2, buf, *len);
+}
+
+static int
+prefixmatch(char *name, char *prefix)
+{
+  while (*prefix)
+    if (*prefix++ != *name++)
+      return 0;
+  return 1;
+}
+
+// There are no executable permission bits in xv6: identify ELF programs.
+static int
+isprogram(char *path)
+{
+  uint magic;
+  struct stat st;
+  int fd = open(path, O_RDONLY);
+  if (fd < 0)
+    return 0;
+  // In particular, never read /console while looking for executables: that
+  // would block Tab completion and consume the next keyboard character.
+  int ok = fstat(fd, &st) == 0 && st.type == T_FILE &&
+           read(fd, &magic, sizeof(magic)) == sizeof(magic) && magic == ELF_MAGIC;
+  close(fd);
+  return ok;
+}
+
+// Stream matches rather than keeping an arbitrarily sized list of filenames.
+static void
+addmatch(char *name, char *first, int *count)
+{
+  if (*count == 0) {
+    strcpy(first, name);
+  } else {
+    if (*count == 1)
+      fprintf(2, "\n%s", first);
+    fprintf(2, " %s", name);
+  }
+  (*count)++;
+}
+
+static void
+complete(char *buf, int *len, int nbuf)
+{
+  int start = *len;
+  while (start > 0 && !strchr(" \t<|>&;()", buf[start - 1]))
+    start--;
+  int command = 1;
+  for (int i = 0; i < start; i++)
+    if (buf[i] != ' ' && buf[i] != '\t')
+      command = 0;
+
+  char dir[MAXLINE], path[MAXLINE + DIRSIZ + 2];
+  char first[DIRSIZ + 1], name[DIRSIZ + 1];
+  char *prefix = buf + start;
+  int slash = -1;
+  for (int i = start; i < *len; i++)
+    if (buf[i] == '/')
+      slash = i;
+  if (slash >= 0) {
+    int size = slash - start + 1;
+    memmove(dir, buf + start, size);
+    dir[size] = 0;
+    prefix = buf + slash + 1;
+  } else {
+    strcpy(dir, command ? "/" : ".");
+  }
+
+  int count = 0;
+  int fd = open(dir, O_RDONLY);
+  struct stat st;
+  struct dirent de;
+  if (fd >= 0) {
+    if (fstat(fd, &st) == 0 && st.type == T_DIR) {
+      while (read(fd, &de, sizeof(de)) == sizeof(de)) {
+        if (de.inum == 0)
+          continue;
+        memmove(name, de.name, DIRSIZ);
+        name[DIRSIZ] = 0;
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0 ||
+            !prefixmatch(name, prefix))
+          continue;
+        strcpy(path, dir);
+        int n = strlen(path);
+        if (n && path[n - 1] != '/')
+          path[n++] = '/';
+        strcpy(path + n, name);
+        if (!command || isprogram(path))
+          addmatch(name, first, &count);
+      }
+    }
+    close(fd);
+  }
+  // Built-ins have no executable file, but are also usable commands.
+  if (command && slash < 0) {
+    if (prefixmatch("cd", prefix))
+      addmatch("cd", first, &count);
+    if (prefixmatch("history", prefix))
+      addmatch("history", first, &count);
+  }
+  if (count == 1) {
+    char *suffix = first + strlen(prefix);
+    int extra = strlen(suffix);
+    if (*len + extra < nbuf) {
+      strcpy(buf + *len, suffix);
+      *len += extra;
+      write(2, suffix, extra);
+    }
+  } else if (count > 1) {
+    fprintf(2, "\n$ %s", buf);
+  }
+}
 
 struct cmd {
   int type;
@@ -134,19 +329,96 @@ runcmd(struct cmd *cmd)
 int
 getcmd(char *buf, int nbuf)
 {
-  write(2, "$ ", 2);
   memset(buf, 0, nbuf);
-  gets(buf, nbuf);
-  if (buf[0] == 0) // EOF
+  if (!interactive) {
+    // Consume a whole physical line, even if it is too long. Never execute
+    // the tail of an oversized script line as a separate command.
+    for (;;) {
+      int n = 0, overflow = 0, cc;
+      char c;
+      while ((cc = read(0, &c, 1)) == 1 && c != '\n') {
+        if (n + 1 < nbuf)
+          buf[n++] = c;
+        else
+          overflow = 1;
+      }
+      buf[n] = 0;
+      if (cc < 0 || (cc == 0 && n == 0 && !overflow))
+        return -1;
+      if (!overflow)
+        return 0;
+      fprintf(2, "sh: line too long\n");
+    }
+  }
+
+  if (consolemode(1) < 0) {
+    fprintf(2, "sh: cannot enable console input\n");
     return -1;
-  return 0;
+  }
+  write(2, "$ ", 2);
+  int len = 0, position = histcount, escape = 0, eof = 0;
+  char draft[MAXLINE];
+  draft[0] = 0;
+
+  for (;;) {
+    uchar c;
+    if (read(0, &c, 1) != 1) {
+      eof = 1;
+      break;
+    }
+    if (escape == 1) {
+      escape = (c == '[' || c == 'O') ? 2 : 0;
+      if (escape)
+        continue;
+    } else if (escape == 2) {
+      // Ignore parameters (e.g. modified arrow keys) until the final byte.
+      if (c >= 0x30 && c <= 0x3f)
+        continue;
+      escape = 0;
+      if (c == 'A' && position > 0) {
+        if (position == histcount)
+          strcpy(draft, buf);
+        position--;
+        replaceline(buf, &len, history[histslot(position)].line);
+      } else if (c == 'B' && position < histcount) {
+        position++;
+        replaceline(buf, &len, position == histcount
+                    ? draft : history[histslot(position)].line);
+      }
+      continue;
+    }
+
+    if (c == '\033') {
+      escape = 1;
+    } else if (c == '\n' || c == '\r' || c == 4) {
+      eof = c == 4 && len == 0; // Ctrl-D on an empty line exits this shell.
+      write(2, "\n", 1);
+      break;
+    } else if (c == '\t') {
+      complete(buf, &len, nbuf);
+    } else if (c == '\b' || c == 127) {
+      if (len > 0) {
+        buf[--len] = 0;
+        write(2, "\b \b", 3);
+      }
+    } else if (c == 21) { // Ctrl-U, as in the original cooked console.
+      replaceline(buf, &len, "");
+    } else if (c >= ' ' && c < 127 && len + 1 < nbuf) {
+      buf[len++] = c;
+      buf[len] = 0;
+      write(2, &c, 1);
+    }
+  }
+  consolemode(0);
+  return eof ? -1 : 0;
 }
 
 int
 main(void)
 {
-  static char buf[100];
+  static char buf[MAXLINE];
   int fd;
+  struct stat st;
 
   // Ensure that three file descriptors are open.
   while ((fd = open("console", O_RDWR)) >= 0) {
@@ -156,18 +428,41 @@ main(void)
     }
   }
 
+  interactive = fstat(0, &st) == 0 && st.type == T_DEVICE;
+
   // Read and run input commands.
   while (getcmd(buf, sizeof(buf)) >= 0) {
     char *cmd = buf;
     while (*cmd == ' ' || *cmd == '\t')
       cmd++;
-    if (*cmd == '\n') // is a blank command
+    // Normalize into the full-size buffer before a longer history expansion.
+    memmove(buf, cmd, strlen(cmd) + 1);
+    cmd = buf;
+    int n = strlen(cmd);
+    while (n > 0 && strchr(" \t\r\n", cmd[n - 1]))
+      cmd[--n] = 0;
+    if (*cmd == 0)
       continue;
-    if (cmd[0] == 'c' && cmd[1] == 'd' && cmd[2] == ' ') {
+    if (expandhistory(cmd) < 0)
+      continue;
+    savehistory(cmd);
+
+    if (strcmp(cmd, "history") == 0) {
+      for (int i = 0; i < histcount; i++) {
+        int slot = histslot(i);
+        printf("%d %s\n", history[slot].number, history[slot].line);
+      }
+    } else if (strcmp(cmd, "cd") == 0 ||
+               (cmd[0] == 'c' && cmd[1] == 'd' &&
+                (cmd[2] == ' ' || cmd[2] == '\t'))) {
       // Chdir must be called by the parent, not the child.
-      cmd[strlen(cmd) - 1] = 0; // chop \n
-      if (chdir(cmd + 3) < 0)
-        fprintf(2, "cannot cd %s\n", cmd + 3);
+      char *path = cmd + 2;
+      while (*path == ' ' || *path == '\t')
+        path++;
+      if (*path == 0)
+        path = "/";
+      if (chdir(path) < 0)
+        fprintf(2, "cannot cd %s\n", path);
     } else {
       if (fork1() == 0)
         runcmd(parsecmd(cmd));
