@@ -63,11 +63,19 @@ memdump(char *fmt, char *data, int len)
   for (; *fmt; fmt++) {
     int size;
     switch (*fmt) {
-    case 'i': size = 4; break;
+    case 'i':
+      size = 4;
+      break;
     case 'p':
-    case 's': size = 8; break;
-    case 'h': size = 2; break;
-    case 'c': size = 1; break;
+    case 's':
+      size = 8;
+      break;
+    case 'h':
+      size = 2;
+      break;
+    case 'c':
+      size = 1;
+      break;
     case 'S':
       // Unlike %s, this never searches past the supplied data.
       while (len > 0 && *data) {
@@ -119,5 +127,4 @@ memdump(char *fmt, char *data, int len)
     data += size;
     len -= size;
   }
-
 }

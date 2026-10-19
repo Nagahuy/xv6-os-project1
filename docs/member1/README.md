@@ -139,6 +139,7 @@ Console: `kernel/console.c`, `kernel/defs.h`, `kernel/exec.c`, `kernel/proc.c`.
 Định tuyến syscall: `kernel/syscall.h`, `kernel/syscall.c`, `kernel/sysproc.c`, `user/user.h`, `user/usys.pl`.
 
 Makefile, grader, Find và các bài System calls không được thay đổi.
+`.gitattributes` chỉ cho phép giữ nguyên whitespace trong patch/log bằng chứng; mã nguồn vẫn được kiểm tra whitespace bình thường.
 
 Giới hạn: tối đa 127 ký tự/dòng; history chỉ tồn tại trong phiên hiện tại; không thêm job control, sửa ở giữa dòng bằng trái/phải,
 hoặc PATH lookup. Khi `cd` sang thư mục con, gọi chương trình bằng đường dẫn như `/cat` theo cơ chế xv6 gốc.

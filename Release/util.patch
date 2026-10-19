@@ -1,11 +1,17 @@
 diff --git a/kernel/console.c b/kernel/console.c
-index 74d5757..621041e 100644
+index 74d5757..ea87953 100644
 --- a/kernel/console.c
 +++ b/kernel/console.c
-@@ -53,8 +53,40 @@ struct {
-   uint r; // Read index
-   uint w; // Write index
-   uint e; // Edit index
+@@ -50,11 +50,43 @@ struct {
+   // input circular buffer
+ #define INPUT_BUF_SIZE 128
+   char buf[INPUT_BUF_SIZE];
+-  uint r; // Read index
+-  uint w; // Write index
+-  uint e; // Edit index
++  uint r;     // Read index
++  uint w;     // Write index
++  uint e;     // Edit index
 +  int rawpid; // Owner of character-at-a-time, no-echo input; 0 = cooked.
  } cons;
  
@@ -19,8 +25,8 @@ index 74d5757..621041e 100644
 +
 +  if (raw != 0 && raw != 1)
 +    return -1;
-+  if (raw && (!f || f->type != FD_DEVICE || f->major != CONSOLE ||
-+              !f->readable))
++  if (raw &&
++      (!f || f->type != FD_DEVICE || f->major != CONSOLE || !f->readable))
 +    return -1;
 +
 +  acquire(&cons.lock);
@@ -43,17 +49,16 @@ index 74d5757..621041e 100644
  //
  // user write() system calls to the console go here.
  // uses sleep() and UART interrupts.
-@@ -96,7 +128,8 @@ consoleread(int user_dst, uint64 dst, int n)
+@@ -96,7 +128,7 @@ consoleread(int user_dst, uint64 dst, int n)
    while (n > 0) {
      // wait until interrupt handler has put some
      // input into cons.buffer.
 -    while (cons.r == cons.w) {
-+    while (cons.r == cons.w ||
-+           (cons.rawpid && cons.rawpid != myproc()->pid)) {
++    while (cons.r == cons.w || (cons.rawpid && cons.rawpid != myproc()->pid)) {
        if (killed(myproc())) {
          release(&cons.lock);
          return -1;
-@@ -109,7 +142,8 @@ consoleread(int user_dst, uint64 dst, int n)
+@@ -109,7 +141,8 @@ consoleread(int user_dst, uint64 dst, int n)
  
      c = cons.buf[cons.r++ % INPUT_BUF_SIZE];
  
@@ -63,7 +68,7 @@ index 74d5757..621041e 100644
        if (n < target) {
          // Save ^D for next time, to make sure
          // caller gets a 0-byte result.
-@@ -126,7 +160,7 @@ consoleread(int user_dst, uint64 dst, int n)
+@@ -126,7 +159,7 @@ consoleread(int user_dst, uint64 dst, int n)
      dst++;
      --n;
  
@@ -72,7 +77,7 @@ index 74d5757..621041e 100644
        // a whole line has arrived, return to
        // the user-level read().
        break;
-@@ -148,6 +182,16 @@ consoleintr(int c)
+@@ -148,6 +181,16 @@ consoleintr(int c)
  {
    acquire(&cons.lock);
  
@@ -114,14 +119,15 @@ index 8c9673f..869a5f0 100644
  
    return argc; // this ends up in a0, the first argument to main(argc, argv)
 diff --git a/kernel/proc.c b/kernel/proc.c
-index f4c1668..f8cb9ac 100644
+index f4c1668..2dc7ccf 100644
 --- a/kernel/proc.c
 +++ b/kernel/proc.c
-@@ -330,6 +330,8 @@ kexit(int status)
+@@ -330,6 +330,9 @@ kexit(int status)
    if (p == initproc)
      panic("init exiting");
  
-+  consolemode(0); // A killed or exiting console editor must not leave raw mode on.
++  consolemode(
++    0); // A killed or exiting console editor must not leave raw mode on.
 +
    // Close all open files.
    for (int fd = 0; fd < NOFILE; fd++) {
@@ -147,13 +153,55 @@ index 1800f20..4e67ef3 100644
  };
  
 diff --git a/kernel/syscall.h b/kernel/syscall.h
-index 5a4a39f..714d14f 100644
+index 5a4a39f..897c23c 100644
 --- a/kernel/syscall.h
 +++ b/kernel/syscall.h
-@@ -21,3 +21,4 @@
- #define SYS_mkdir  20
- #define SYS_close  21
- #define SYS_sync   22
+@@ -1,23 +1,24 @@
+ // System call numbers
+-#define SYS_fork   1
+-#define SYS_exit   2
+-#define SYS_wait   3
+-#define SYS_pipe   4
+-#define SYS_read   5
+-#define SYS_kill   6
+-#define SYS_exec   7
+-#define SYS_fstat  8
+-#define SYS_chdir  9
+-#define SYS_dup    10
+-#define SYS_getpid 11
+-#define SYS_sbrk   12
+-#define SYS_pause  13
+-#define SYS_uptime 14
+-#define SYS_open   15
+-#define SYS_write  16
+-#define SYS_mknod  17
+-#define SYS_unlink 18
+-#define SYS_link   19
+-#define SYS_mkdir  20
+-#define SYS_close  21
+-#define SYS_sync   22
++#define SYS_fork        1
++#define SYS_exit        2
++#define SYS_wait        3
++#define SYS_pipe        4
++#define SYS_read        5
++#define SYS_kill        6
++#define SYS_exec        7
++#define SYS_fstat       8
++#define SYS_chdir       9
++#define SYS_dup         10
++#define SYS_getpid      11
++#define SYS_sbrk        12
++#define SYS_pause       13
++#define SYS_uptime      14
++#define SYS_open        15
++#define SYS_write       16
++#define SYS_mknod       17
++#define SYS_unlink      18
++#define SYS_link        19
++#define SYS_mkdir       20
++#define SYS_close       21
++#define SYS_sync        22
 +#define SYS_consolemode 23
 diff --git a/kernel/sysproc.c b/kernel/sysproc.c
 index cd25557..2a05b53 100644
@@ -175,10 +223,10 @@ index cd25557..2a05b53 100644
  sys_exit(void)
  {
 diff --git a/user/memdump.c b/user/memdump.c
-index cf4bd4c..dc4e220 100644
+index cf4bd4c..af369a8 100644
 --- a/user/memdump.c
 +++ b/user/memdump.c
-@@ -60,6 +60,64 @@ main(int argc, char *argv[])
+@@ -60,6 +60,71 @@ main(int argc, char *argv[])
  void
  memdump(char *fmt, char *data, int len)
  {
@@ -186,11 +234,19 @@ index cf4bd4c..dc4e220 100644
 +  for (; *fmt; fmt++) {
 +    int size;
 +    switch (*fmt) {
-+    case 'i': size = 4; break;
++    case 'i':
++      size = 4;
++      break;
 +    case 'p':
-+    case 's': size = 8; break;
-+    case 'h': size = 2; break;
-+    case 'c': size = 1; break;
++    case 's':
++      size = 8;
++      break;
++    case 'h':
++      size = 2;
++      break;
++    case 'c':
++      size = 1;
++      break;
 +    case 'S':
 +      // Unlike %s, this never searches past the supplied data.
 +      while (len > 0 && *data) {
@@ -208,7 +264,7 @@ index cf4bd4c..dc4e220 100644
 +      printf("memdump: not enough data for '%c'\n", *fmt);
 +      return;
 +    }
-+
+ 
 +    // Copy to aligned locals: a preceding 'c' can leave data unaligned.
 +    switch (*fmt) {
 +    case 'i': {
@@ -242,10 +298,9 @@ index cf4bd4c..dc4e220 100644
 +    data += size;
 +    len -= size;
 +  }
- 
  }
 diff --git a/user/sh.c b/user/sh.c
-index 507ce42..22de173 100644
+index 507ce42..9821636 100644
 --- a/user/sh.c
 +++ b/user/sh.c
 @@ -3,6 +3,9 @@
@@ -258,11 +313,13 @@ index 507ce42..22de173 100644
  
  // Parsed command representation
  #define EXEC  1
-@@ -12,6 +15,198 @@
+@@ -11,7 +14,200 @@
+ #define LIST  4
  #define BACK  5
  
- #define MAXARGS 10
-+#define MAXLINE 128 // Includes the terminating NUL; matches console capacity.
+-#define MAXARGS 10
++#define MAXARGS  10
++#define MAXLINE  128 // Includes the terminating NUL; matches console capacity.
 +#define NHISTORY 10
 +
 +static int interactive;
@@ -364,7 +421,8 @@ index 507ce42..22de173 100644
 +  // In particular, never read /console while looking for executables: that
 +  // would block Tab completion and consume the next keyboard character.
 +  int ok = fstat(fd, &st) == 0 && st.type == T_FILE &&
-+           read(fd, &magic, sizeof(magic)) == sizeof(magic) && magic == ELF_MAGIC;
++           read(fd, &magic, sizeof(magic)) == sizeof(magic) &&
++           magic == ELF_MAGIC;
 +  close(fd);
 +  return ok;
 +}
@@ -457,7 +515,7 @@ index 507ce42..22de173 100644
  
  struct cmd {
    int type;
-@@ -134,19 +329,96 @@ runcmd(struct cmd *cmd)
+@@ -134,19 +330,97 @@ runcmd(struct cmd *cmd)
  int
  getcmd(char *buf, int nbuf)
  {
@@ -518,8 +576,9 @@ index 507ce42..22de173 100644
 +        replaceline(buf, &len, history[histslot(position)].line);
 +      } else if (c == 'B' && position < histcount) {
 +        position++;
-+        replaceline(buf, &len, position == histcount
-+                    ? draft : history[histslot(position)].line);
++        replaceline(buf, &len,
++                    position == histcount ? draft
++                                          : history[histslot(position)].line);
 +      }
 +      continue;
 +    }
@@ -559,7 +618,7 @@ index 507ce42..22de173 100644
  
    // Ensure that three file descriptors are open.
    while ((fd = open("console", O_RDWR)) >= 0) {
-@@ -156,18 +428,41 @@ main(void)
+@@ -156,18 +430,40 @@ main(void)
      }
    }
  
@@ -589,9 +648,8 @@ index 507ce42..22de173 100644
 +        int slot = histslot(i);
 +        printf("%d %s\n", history[slot].number, history[slot].line);
 +      }
-+    } else if (strcmp(cmd, "cd") == 0 ||
-+               (cmd[0] == 'c' && cmd[1] == 'd' &&
-+                (cmd[2] == ' ' || cmd[2] == '\t'))) {
++    } else if (strcmp(cmd, "cd") == 0 || (cmd[0] == 'c' && cmd[1] == 'd' &&
++                                          (cmd[2] == ' ' || cmd[2] == '\t'))) {
        // Chdir must be called by the parent, not the child.
 -      cmd[strlen(cmd) - 1] = 0; // chop \n
 -      if (chdir(cmd + 3) < 0)

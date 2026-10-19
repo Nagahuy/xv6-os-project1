@@ -14,8 +14,8 @@
 #define LIST  4
 #define BACK  5
 
-#define MAXARGS 10
-#define MAXLINE 128 // Includes the terminating NUL; matches console capacity.
+#define MAXARGS  10
+#define MAXLINE  128 // Includes the terminating NUL; matches console capacity.
 #define NHISTORY 10
 
 static int interactive;
@@ -117,7 +117,8 @@ isprogram(char *path)
   // In particular, never read /console while looking for executables: that
   // would block Tab completion and consume the next keyboard character.
   int ok = fstat(fd, &st) == 0 && st.type == T_FILE &&
-           read(fd, &magic, sizeof(magic)) == sizeof(magic) && magic == ELF_MAGIC;
+           read(fd, &magic, sizeof(magic)) == sizeof(magic) &&
+           magic == ELF_MAGIC;
   close(fd);
   return ok;
 }
@@ -382,8 +383,9 @@ getcmd(char *buf, int nbuf)
         replaceline(buf, &len, history[histslot(position)].line);
       } else if (c == 'B' && position < histcount) {
         position++;
-        replaceline(buf, &len, position == histcount
-                    ? draft : history[histslot(position)].line);
+        replaceline(buf, &len,
+                    position == histcount ? draft
+                                          : history[histslot(position)].line);
       }
       continue;
     }
@@ -452,9 +454,8 @@ main(void)
         int slot = histslot(i);
         printf("%d %s\n", history[slot].number, history[slot].line);
       }
-    } else if (strcmp(cmd, "cd") == 0 ||
-               (cmd[0] == 'c' && cmd[1] == 'd' &&
-                (cmd[2] == ' ' || cmd[2] == '\t'))) {
+    } else if (strcmp(cmd, "cd") == 0 || (cmd[0] == 'c' && cmd[1] == 'd' &&
+                                          (cmd[2] == ' ' || cmd[2] == '\t'))) {
       // Chdir must be called by the parent, not the child.
       char *path = cmd + 2;
       while (*path == ' ' || *path == '\t')

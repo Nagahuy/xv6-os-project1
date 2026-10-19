@@ -17,6 +17,9 @@ Validation:
   find/exec, and time.txt remain outside this member's scope. The script monitor can also wait to timeout after DONE
   when prompts are correctly suppressed; the transcript and explanation are in docs/member1/TEST_RESULTS.md.
 - Independent review identified and verified fixes for device completion and cooked-input cleanup.
+- Changed C/header files pass clang-format 23.1.3 and whitespace checks. Whole-repo formatting still flags unchanged
+  kernel/param.h and kernel/riscv.h; those base files are left untouched. Ubuntu 24's clang-format 18 cannot read
+  the base configuration's ReflowComments: Never, so verification used a newer formatter.
 
 No Makefile or grading-script changes. Includes a concise report, demo/viva guide, test evidence and Member 1's
 code-only util.patch. The team should regenerate the final util.patch after integrating all members.

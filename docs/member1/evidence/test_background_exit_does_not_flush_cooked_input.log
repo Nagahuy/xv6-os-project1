@@ -1,8 +1,8 @@
 
 xv6 kernel is booting
 
-hart 1 starting
 hart 2 starting
+hart 1 starting
 init: starting sh
 $ consoleprobe delayed &
 $ cat

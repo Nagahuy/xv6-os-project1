@@ -24,10 +24,15 @@ if baseline != final:
     raise SystemExit("Grader results changed; inspect before packaging.")
 print("Grader comparison: identical; passed=%d failed=%d" % (
     sum(v > 0 for v in final.values()), sum(v == 0 for v in final.values())))
+for name in ["memdump-guard.log", "shell-after.log"]:
+    if not (RESULTS / name).read_text(encoding="utf-8").rstrip().endswith("\nOK"):
+        raise SystemExit("Member 1 tests are not green: " + name)
+if (RESULTS / "memdump-grade.log").read_text(encoding="utf-8").count(": OK") != 3:
+    raise SystemExit("Expected all three official Memdump test groups to pass.")
 
 for name in [
     "baseline-grades.json", "final-grades.json", "memdump-guard.log", "shell-after.log",
-    "memdump-grade.log", "grade-before-shell.log", "grade-final.log", "shell-before.log",
+    "memdump-grade.log", "grade-before-shell.log", "grade-final.log", "shell-before.log", "format-check.log",
     "console-before-fix.log", "device-before-fix.log",
     "test_tab_command_and_file_before_enter.log", "test_tab_multiple_and_no_match.log",
     "test_tab_empty_prefix_skips_devices.log", "test_history_and_expansion.log",

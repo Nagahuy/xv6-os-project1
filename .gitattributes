@@ -1,0 +1,3 @@
+# Patch context and original serial/grader logs intentionally retain whitespace.
+Release/*.patch -whitespace
+docs/member1/evidence/*.log -whitespace

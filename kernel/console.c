@@ -50,9 +50,9 @@ struct {
   // input circular buffer
 #define INPUT_BUF_SIZE 128
   char buf[INPUT_BUF_SIZE];
-  uint r; // Read index
-  uint w; // Write index
-  uint e; // Edit index
+  uint r;     // Read index
+  uint w;     // Write index
+  uint e;     // Edit index
   int rawpid; // Owner of character-at-a-time, no-echo input; 0 = cooked.
 } cons;
 
@@ -66,8 +66,8 @@ consolemode(int raw)
 
   if (raw != 0 && raw != 1)
     return -1;
-  if (raw && (!f || f->type != FD_DEVICE || f->major != CONSOLE ||
-              !f->readable))
+  if (raw &&
+      (!f || f->type != FD_DEVICE || f->major != CONSOLE || !f->readable))
     return -1;
 
   acquire(&cons.lock);
@@ -128,8 +128,7 @@ consoleread(int user_dst, uint64 dst, int n)
   while (n > 0) {
     // wait until interrupt handler has put some
     // input into cons.buffer.
-    while (cons.r == cons.w ||
-           (cons.rawpid && cons.rawpid != myproc()->pid)) {
+    while (cons.r == cons.w || (cons.rawpid && cons.rawpid != myproc()->pid)) {
       if (killed(myproc())) {
         release(&cons.lock);
         return -1;

@@ -76,6 +76,10 @@ về monitor nếu còn timeout và tiếp tục demo Shell trực tiếp theo �
 
 Compiler không báo lỗi. Linker có cảnh báo LOAD segment RWX ở kernel/forktest, đã xuất hiện ngay trong build base.
 
+Format: các file C/header đã sửa qua clang-format 23.1.3 và git diff --check. Kiểm tra format toàn repo còn báo
+ở kernel/param.h và kernel/riscv.h vốn không thuộc thay đổi này; không chỉnh hai file của base. clang-format 18
+đi kèm Ubuntu 24.04 không đọc được giá trị ReflowComments: Never trong cấu hình gốc, nên dùng bản mới hơn để kiểm tra.
+
 ## Review và tái hiện lỗi trước khi sửa
 
 - Memdump trống: 15 ca guard-page đều thiếu output; sau sửa đều OK.

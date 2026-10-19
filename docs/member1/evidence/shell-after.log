@@ -20,6 +20,6 @@ test_tab_empty_prefix_skips_devices (__main__.ShellTests.test_tab_empty_prefix_s
 test_tab_multiple_and_no_match (__main__.ShellTests.test_tab_multiple_and_no_match) ... ok
 
 ----------------------------------------------------------------------
-Ran 12 tests in 45.447s
+Ran 12 tests in 58.841s
 
 OK
