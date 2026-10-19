@@ -1,0 +1,12 @@
+
+xv6 kernel is booting
+
+hart 1 starting
+hart 2 starting
+init: starting sh
+$ 
+cat dorphan echo forktest forphan grep grind init kill ln logstress ls memdump mkdir rm sh stressfs sync usertests wc zombie consoleprobe cd history
+$ consoleprobe            echo DEVICE_SAFE
+DEVICE_SAFE
+$ QEMU: Terminated
+

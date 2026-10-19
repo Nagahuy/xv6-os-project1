@@ -1,0 +1,161 @@
+make: 'kernel/kernel' is up to date.
+== Test sleep, no arguments == sleep, no arguments: FAIL (3.9s) 
+    ...
+         init: starting sh
+         $ sleep
+    BAD  exec sleep failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3143 (make)
+    unexpected lines in output
+    QEMU output saved to xv6.out.sleep_no_args
+== Test sleep, returns == sleep, returns: FAIL (2.3s) 
+    ...
+         init: starting sh
+         $ sleep
+    BAD  exec sleep failed
+         $ echo OK
+    GOOD OK
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3186 (make)
+    unexpected lines in output
+    QEMU output saved to xv6.out.sleep_no_args
+== Test sleep, makes syscall == sleep, makes syscall: FAIL (2.4s) 
+    ...
+         hart 2 starting
+         init: starting sh
+    GOOD $ sleep 10
+         exec sleep failed
+         $ echo FAIL
+    BAD  FAIL
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3224 (make)
+    unexpected lines in output
+    QEMU output saved to xv6.out.sleep
+== Test sixfive_test == sixfive_test: FAIL (2.2s) 
+    ...
+         hart 1 starting
+         init: starting sh
+         $ sixfive sixfive.txt
+         exec sixfive failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3262 (make)
+    MISSING '^5'
+    MISSING '^100'
+    MISSING '^18'
+    MISSING '^6'
+    QEMU output saved to xv6.out.sixfive_test
+== Test sixfive_readme == sixfive_readme: FAIL (2.4s) 
+    ...
+         hart 1 starting
+         init: starting sh
+         $ sixfive README
+         exec sixfive failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3300 (make)
+    MISSING '^6'
+    MISSING '^6'
+    MISSING '^1810'
+    MISSING '^6'
+    MISSING '^1810'
+    QEMU output saved to xv6.out.sixfive_readme
+== Test sixfive_all == sixfive_all: FAIL (2.4s) 
+    ...
+         hart 1 starting
+         init: starting sh
+         $ sixfive sixfive.txt README
+         exec sixfive failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3338 (make)
+    MISSING '^5'
+    MISSING '^100'
+    MISSING '^18'
+    MISSING '^6'
+    MISSING '^6'
+    MISSING '^6'
+    MISSING '^1810'
+    MISSING '^6'
+    MISSING '^1810'
+    QEMU output saved to xv6.out.sixfive_readme
+== Test memdump, examples == memdump, examples: OK (2.3s) 
+== Test memdump, format ii, S, p == memdump, format ii, S, p: OK (2.3s) 
+== Test find, in current directory == find, in current directory: FAIL (5.1s) 
+    ...
+         init: starting sh
+         $ echo > lhwlJ2zC
+         $ find . lhwlJ2zC
+         exec find failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3469 (make)
+    MISSING './lhwlJ2zC'
+    QEMU output saved to xv6.out.find_curdir
+== Test find, in sub-directory == find, in sub-directory: FAIL (2.2s) 
+    ...
+         $ mkdir NnwLKHE4
+         $ echo > NnwLKHE4/H7gBcI9b
+         $ find NnwLKHE4 H7gBcI9b
+         exec find failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3507 (make)
+    MISSING 'NnwLKHE4/H7gBcI9b'
+    QEMU output saved to xv6.out.find_subdir
+== Test find, recursive == find, recursive: FAIL (2.4s) 
+    ...
+         $ mkdir Giax3EjQ
+         $ echo > Giax3EjQ/N1PMKiui
+         $ find . N1PMKiui
+         exec find failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3545 (make)
+    MISSING './LUt6LR28/N1PMKiui'
+    MISSING './LUt6LR28/noR9Rh3G/N1PMKiui'
+    MISSING './Giax3EjQ/N1PMKiui'
+    QEMU output saved to xv6.out.find_recursive
+== Test exec == exec: FAIL (2.1s) 
+    ...
+         hart 1 starting
+         init: starting sh
+         $ find . wc -exec echo
+         exec find failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3586 (make)
+    MISSING '^./wc$'
+    QEMU output saved to xv6.out.find_exec
+== Test exec, multiple args == exec, multiple args: FAIL (2.3s) 
+    Number of appearances of 'hello'
+    got:
+      1
+    expected:
+      5
+    QEMU output saved to xv6.out.find_exec_args
+== Test exec via sh script == exec via sh script: FAIL (2.8s) 
+    Number of appearances of 'hello'
+    got:
+      0
+    expected:
+      3
+    QEMU output saved to xv6.out.test_find_sh
+== Test sleep, zero and non-numeric args return == sleep, zero and non-numeric args return: FAIL (2.3s) 
+    ...
+         init: starting sh
+         $ sleep 0
+    BAD  exec sleep failed
+         $ sleep z
+    BAD  exec sleep failed
+         $ echo OK0
+    GOOD OK0
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3713 (make)
+    unexpected lines in output
+    QEMU output saved to xv6.out.sleep_corner_args
+== Test sixfive, stdin and missing file == sixfive, stdin and missing file: FAIL (2.3s) 
+    ...
+         $ sixfive WIZQOcIN
+         exec sixfive failed
+         $ echo DONE
+         DONE
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3754 (make)
+    MISSING '^12$'
+    MISSING '^30$'
+    MISSING '^.*cannot open'
+    QEMU output saved to xv6.out.sixfive_corner
+== Test memdump, formats h c, bounds checking, usage == memdump, formats h c, bounds checking, usage: OK (2.6s) 
+== Test find, missing target, no duplicates, directory match == find, missing target, no duplicates, directory match: FAIL (2.6s) 
+    times TNufpDjH reported by find
+    got:
+      0
+    expected:
+      1
+    QEMU output saved to xv6.out.find_corner
+== Test time == 
+time: FAIL 
+    Cannot read time.txt
+Score: 25/156

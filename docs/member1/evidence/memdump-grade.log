@@ -1,0 +1,4 @@
+make: 'kernel/kernel' is up to date.
+== Test memdump, examples == memdump, examples: OK (4.0s) 
+== Test memdump, format ii, S, p == memdump, format ii, S, p: OK (2.5s) 
+== Test memdump, formats h c, bounds checking, usage == memdump, formats h c, bounds checking, usage: OK (2.5s) 

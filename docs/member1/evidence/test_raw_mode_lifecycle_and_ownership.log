@@ -1,0 +1,19 @@
+
+xv6 kernel is booting
+
+hart 2 starting
+hart 1 starting
+init: starting sh
+$ consoleprobe invalid
+INVALID_OK
+$ consoleprobe owner
+OWNER_OK
+$ consoleprobe exit
+RAW_EXIT
+$ consoleprobe kill
+KILL_OK
+$ consoleprobe exec
+EXEC_OK
+EXEC_OK
+$ QEMU: Terminated
+

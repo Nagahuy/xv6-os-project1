@@ -1,0 +1,66 @@
+test_script_has_no_prompt (__main__.ShellTests.test_script_has_no_prompt) ... FAIL
+test_tab_command_and_file_before_enter (__main__.ShellTests.test_tab_command_and_file_before_enter) ... ERROR
+test_history_and_expansion (__main__.ShellTests.test_history_and_expansion) ... FAIL
+
+======================================================================
+ERROR: test_tab_command_and_file_before_enter (__main__.ShellTests.test_tab_command_and_file_before_enter)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/HieuLT/HDH/Proj1/tests/test_shell.py", line 72, in test_tab_command_and_file_before_enter
+    c.child.expect_exact("echo")
+  File "/usr/lib/python3/dist-packages/pexpect/spawnbase.py", line 432, in expect_exact
+    return exp.expect_loop(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/pexpect/expect.py", line 181, in expect_loop
+    return self.timeout(e)
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/pexpect/expect.py", line 144, in timeout
+    raise exc
+pexpect.exceptions.TIMEOUT: Timeout exceeded.
+<pexpect.pty_spawn.spawn object at 0x76fe5b265c70>
+command: /usr/bin/qemu-system-riscv64
+args: [b'/usr/bin/qemu-system-riscv64', b'-machine', b'virt', b'-bios', b'none', b'-kernel', b'kernel/kernel', b'-m', b'128M', b'-smp', b'3', b'-nographic', b'-global', b'virtio-mmio.force-legacy=false', b'-drive', b'file=fs.img,if=none,format=raw,id=x0,snapshot=on', b'-device', b'virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0']
+buffer (last 100 chars): 'ec\t'
+before (last 100 chars): 'ec\t'
+after: <class 'pexpect.exceptions.TIMEOUT'>
+match: None
+match_index: None
+exitstatus: None
+flag_eof: False
+pid: 3041
+child_fd: 6
+closed: False
+timeout: 15
+delimiter: <class 'pexpect.exceptions.EOF'>
+logfile: None
+logfile_read: <_io.TextIOWrapper name='/mnt/d/HieuLT/HDH/Proj1/test-results/test_tab_command_and_file_before_enter.log' mode='w' encoding='utf-8'>
+logfile_send: None
+maxread: 2000
+ignorecase: False
+searchwindowsize: None
+delaybeforesend: 0.05
+delayafterclose: 0.1
+delayafterterminate: 0.1
+searcher: searcher_string:
+    0: 'echo'
+
+======================================================================
+FAIL: test_script_has_no_prompt (__main__.ShellTests.test_script_has_no_prompt)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/HieuLT/HDH/Proj1/tests/test_shell.py", line 64, in test_script_has_no_prompt
+    self.assertNotIn("$ ", c.child.before)
+AssertionError: '$ ' unexpectedly found in 'sh < m1script\r\n$ '
+
+======================================================================
+FAIL: test_history_and_expansion (__main__.ShellTests.test_history_and_expansion)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/HieuLT/HDH/Proj1/tests/test_shell.py", line 99, in test_history_and_expansion
+    self.assertIn("\necho first\nfirst\n", out)
+AssertionError: '\necho first\nfirst\n' not found in '!!\nexec !! failed\n'
+
+----------------------------------------------------------------------
+Ran 3 tests in 20.007s
+
+FAILED (failures=2, errors=1)

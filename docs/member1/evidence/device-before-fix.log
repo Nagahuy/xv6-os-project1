@@ -1,0 +1,51 @@
+nmeta 47 (boot, super, log blocks 31, inode blocks 13, bitmap blocks 1) blocks 1953 total 2000
+balloc: first 1050 blocks have been allocated
+balloc: write bitmap block at sector 46
+test_tab_empty_prefix_skips_devices (__main__.ShellTests.test_tab_empty_prefix_skips_devices) ... ERROR
+
+======================================================================
+ERROR: test_tab_empty_prefix_skips_devices (__main__.ShellTests.test_tab_empty_prefix_skips_devices)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/HieuLT/HDH/Proj1/tests/test_shell.py", line 233, in test_tab_empty_prefix_skips_devices
+    c.child.expect_exact("$ ", timeout=3)
+  File "/usr/lib/python3/dist-packages/pexpect/spawnbase.py", line 432, in expect_exact
+    return exp.expect_loop(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/pexpect/expect.py", line 181, in expect_loop
+    return self.timeout(e)
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/pexpect/expect.py", line 144, in timeout
+    raise exc
+pexpect.exceptions.TIMEOUT: Timeout exceeded.
+<pexpect.pty_spawn.spawn object at 0x752658718620>
+command: /usr/bin/qemu-system-riscv64
+args: [b'/usr/bin/qemu-system-riscv64', b'-machine', b'virt', b'-bios', b'none', b'-kernel', b'kernel/kernel', b'-m', b'128M', b'-smp', b'3', b'-nographic', b'-global', b'virtio-mmio.force-legacy=false', b'-drive', b'file=/tmp/xv6-shell-z4a6cugl/fs.img,if=none,format=raw,id=x0,snapshot=on', b'-device', b'virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0']
+buffer (last 100 chars): 'be'
+before (last 100 chars): 'p grind init kill ln logstress ls memdump mkdir rm sh stressfs sync usertests wc zombie consoleprobe'
+after: <class 'pexpect.exceptions.TIMEOUT'>
+match: None
+match_index: None
+exitstatus: None
+flag_eof: False
+pid: 819
+child_fd: 6
+closed: False
+timeout: 15
+delimiter: <class 'pexpect.exceptions.EOF'>
+logfile: None
+logfile_read: <_io.TextIOWrapper name='/mnt/d/HieuLT/HDH/Proj1/test-results/test_tab_empty_prefix_skips_devices.log' mode='w' encoding='utf-8'>
+logfile_send: None
+maxread: 2000
+ignorecase: False
+searchwindowsize: None
+delaybeforesend: 0.05
+delayafterclose: 0.1
+delayafterterminate: 0.1
+searcher: searcher_string:
+    0: '$ '
+
+----------------------------------------------------------------------
+Ran 1 test in 7.193s
+
+FAILED (errors=1)

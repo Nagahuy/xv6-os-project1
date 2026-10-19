@@ -1,0 +1,629 @@
+diff --git a/kernel/console.c b/kernel/console.c
+index 74d5757..621041e 100644
+--- a/kernel/console.c
++++ b/kernel/console.c
+@@ -53,8 +53,40 @@ struct {
+   uint r; // Read index
+   uint w; // Write index
+   uint e; // Edit index
++  int rawpid; // Owner of character-at-a-time, no-echo input; 0 = cooked.
+ } cons;
+ 
++// Only the owner may release raw mode. It is not inherited by fork.
++// Shell releases it before running commands; exit/exec also release it.
++int
++consolemode(int raw)
++{
++  struct proc *p = myproc();
++  struct file *f = p->ofile[0];
++
++  if (raw != 0 && raw != 1)
++    return -1;
++  if (raw && (!f || f->type != FD_DEVICE || f->major != CONSOLE ||
++              !f->readable))
++    return -1;
++
++  acquire(&cons.lock);
++  if (cons.rawpid && cons.rawpid != p->pid) {
++    release(&cons.lock);
++    return -1;
++  }
++  if ((!raw && cons.rawpid == 0) || (raw && cons.rawpid == p->pid)) {
++    release(&cons.lock);
++    return 0; // A no-op must not commit an unfinished cooked input line.
++  }
++  cons.rawpid = raw ? p->pid : 0;
++  // Preserve input already queued, including an unfinished cooked line.
++  cons.w = cons.e;
++  wakeup(&cons.r);
++  release(&cons.lock);
++  return 0;
++}
++
+ //
+ // user write() system calls to the console go here.
+ // uses sleep() and UART interrupts.
+@@ -96,7 +128,8 @@ consoleread(int user_dst, uint64 dst, int n)
+   while (n > 0) {
+     // wait until interrupt handler has put some
+     // input into cons.buffer.
+-    while (cons.r == cons.w) {
++    while (cons.r == cons.w ||
++           (cons.rawpid && cons.rawpid != myproc()->pid)) {
+       if (killed(myproc())) {
+         release(&cons.lock);
+         return -1;
+@@ -109,7 +142,8 @@ consoleread(int user_dst, uint64 dst, int n)
+ 
+     c = cons.buf[cons.r++ % INPUT_BUF_SIZE];
+ 
+-    if (c == C('D')) { // end-of-file
++    int raw = cons.rawpid == myproc()->pid;
++    if (!raw && c == C('D')) { // end-of-file in cooked mode
+       if (n < target) {
+         // Save ^D for next time, to make sure
+         // caller gets a 0-byte result.
+@@ -126,7 +160,7 @@ consoleread(int user_dst, uint64 dst, int n)
+     dst++;
+     --n;
+ 
+-    if (c == '\n') {
++    if (raw || c == '\n') {
+       // a whole line has arrived, return to
+       // the user-level read().
+       break;
+@@ -148,6 +182,16 @@ consoleintr(int c)
+ {
+   acquire(&cons.lock);
+ 
++  if (cons.rawpid && c != C('P')) {
++    if (c != 0 && cons.e - cons.r < INPUT_BUF_SIZE) {
++      cons.buf[cons.e++ % INPUT_BUF_SIZE] = c;
++      cons.w = cons.e;
++      wakeup(&cons.r);
++    }
++    release(&cons.lock);
++    return; // The user-space editor handles echo, erase, Tab and ESC.
++  }
++
+   switch (c) {
+   case C('P'): // Print process list.
+     procdump();
+diff --git a/kernel/defs.h b/kernel/defs.h
+index 0ae6896..84847a1 100644
+--- a/kernel/defs.h
++++ b/kernel/defs.h
+@@ -21,6 +21,7 @@ void            bunpin(struct buf*);
+ // console.c
+ void            consoleinit(void);
+ void            consoleintr(int);
++int             consolemode(int);
+ void            consputc(int);
+ 
+ // exec.c
+diff --git a/kernel/exec.c b/kernel/exec.c
+index 8c9673f..869a5f0 100644
+--- a/kernel/exec.c
++++ b/kernel/exec.c
+@@ -135,6 +135,7 @@ kexec(char *path, char **argv)
+   p->sz = sz;
+   p->trapframe->epc = elf.entry; // initial program counter = ulib.c:start()
+   p->trapframe->sp = sp;         // initial stack pointer
++  consolemode(0); // A replacement program starts with normal console input.
+   proc_freepagetable(oldpagetable, oldsz);
+ 
+   return argc; // this ends up in a0, the first argument to main(argc, argv)
+diff --git a/kernel/proc.c b/kernel/proc.c
+index f4c1668..f8cb9ac 100644
+--- a/kernel/proc.c
++++ b/kernel/proc.c
+@@ -330,6 +330,8 @@ kexit(int status)
+   if (p == initproc)
+     panic("init exiting");
+ 
++  consolemode(0); // A killed or exiting console editor must not leave raw mode on.
++
+   // Close all open files.
+   for (int fd = 0; fd < NOFILE; fd++) {
+     if (p->ofile[fd]) {
+diff --git a/kernel/syscall.c b/kernel/syscall.c
+index 1800f20..4e67ef3 100644
+--- a/kernel/syscall.c
++++ b/kernel/syscall.c
+@@ -103,6 +103,7 @@ extern uint64 sys_link(void);
+ extern uint64 sys_mkdir(void);
+ extern uint64 sys_close(void);
+ extern uint64 sys_sync(void);
++extern uint64 sys_consolemode(void);
+ 
+ // An array mapping syscall numbers from syscall.h
+ // to the function that handles the system call.
+@@ -130,6 +131,7 @@ static uint64 (*syscalls[])(void) = {
+   [SYS_mkdir]   = sys_mkdir,
+   [SYS_close]   = sys_close,
+   [SYS_sync]    = sys_sync,
++  [SYS_consolemode] = sys_consolemode,
+   // clang-format on
+ };
+ 
+diff --git a/kernel/syscall.h b/kernel/syscall.h
+index 5a4a39f..714d14f 100644
+--- a/kernel/syscall.h
++++ b/kernel/syscall.h
+@@ -21,3 +21,4 @@
+ #define SYS_mkdir  20
+ #define SYS_close  21
+ #define SYS_sync   22
++#define SYS_consolemode 23
+diff --git a/kernel/sysproc.c b/kernel/sysproc.c
+index cd25557..2a05b53 100644
+--- a/kernel/sysproc.c
++++ b/kernel/sysproc.c
+@@ -7,6 +7,14 @@
+ #include "proc.h"
+ #include "vm.h"
+ 
++uint64
++sys_consolemode(void)
++{
++  int raw;
++  argint(0, &raw);
++  return consolemode(raw);
++}
++
+ uint64
+ sys_exit(void)
+ {
+diff --git a/user/memdump.c b/user/memdump.c
+index cf4bd4c..dc4e220 100644
+--- a/user/memdump.c
++++ b/user/memdump.c
+@@ -60,6 +60,64 @@ main(int argc, char *argv[])
+ void
+ memdump(char *fmt, char *data, int len)
+ {
+-  // Your code here.  `data` holds `len` valid bytes.
++  for (; *fmt; fmt++) {
++    int size;
++    switch (*fmt) {
++    case 'i': size = 4; break;
++    case 'p':
++    case 's': size = 8; break;
++    case 'h': size = 2; break;
++    case 'c': size = 1; break;
++    case 'S':
++      // Unlike %s, this never searches past the supplied data.
++      while (len > 0 && *data) {
++        printf("%c", (uchar)*data++);
++        len--;
++      }
++      printf("\n");
++      return; // S describes the remainder of the data.
++    default:
++      printf("memdump: unknown format '%c'\n", *fmt);
++      return;
++    }
++
++    if (len < size) {
++      printf("memdump: not enough data for '%c'\n", *fmt);
++      return;
++    }
++
++    // Copy to aligned locals: a preceding 'c' can leave data unaligned.
++    switch (*fmt) {
++    case 'i': {
++      int value;
++      memmove(&value, data, size);
++      printf("%d\n", value);
++      break;
++    }
++    case 'p': {
++      uint64 value;
++      memmove(&value, data, size);
++      printf("%lx\n", value);
++      break;
++    }
++    case 'h': {
++      short value;
++      memmove(&value, data, size);
++      printf("%d\n", value);
++      break;
++    }
++    case 'c':
++      printf("%c\n", (uchar)*data);
++      break;
++    case 's': {
++      char *value;
++      memmove(&value, data, size);
++      printf("%s\n", value);
++      break;
++    }
++    }
++    data += size;
++    len -= size;
++  }
+ 
+ }
+diff --git a/user/sh.c b/user/sh.c
+index 507ce42..22de173 100644
+--- a/user/sh.c
++++ b/user/sh.c
+@@ -3,6 +3,9 @@
+ #include "kernel/types.h"
+ #include "user/user.h"
+ #include "kernel/fcntl.h"
++#include "kernel/stat.h"
++#include "kernel/fs.h"
++#include "kernel/elf.h"
+ 
+ // Parsed command representation
+ #define EXEC  1
+@@ -12,6 +15,198 @@
+ #define BACK  5
+ 
+ #define MAXARGS 10
++#define MAXLINE 128 // Includes the terminating NUL; matches console capacity.
++#define NHISTORY 10
++
++static int interactive;
++static struct {
++  int number;
++  char line[MAXLINE];
++} history[NHISTORY];
++static int histstart, histcount;
++static int nextnumber = 1;
++
++static int
++histslot(int index)
++{
++  return (histstart + index) % NHISTORY;
++}
++
++static void
++savehistory(char *line)
++{
++  int slot;
++  if (histcount == NHISTORY) {
++    slot = histstart;
++    histstart = (histstart + 1) % NHISTORY;
++  } else {
++    slot = histslot(histcount++);
++  }
++  history[slot].number = nextnumber++;
++  strcpy(history[slot].line, line);
++}
++
++// Store expanded commands, so recalling !! can never recursively recall !!.
++static int
++expandhistory(char *line)
++{
++  if (line[0] != '!')
++    return 0;
++
++  int index = -1;
++  if (strcmp(line, "!!") == 0) {
++    if (histcount == 0) {
++      fprintf(2, "history: no previous command\n");
++      return -1;
++    }
++    index = histcount - 1;
++  } else {
++    int number = 0;
++    char *p = line + 1;
++    if (*p == 0)
++      goto missing;
++    for (; *p; p++) {
++      if (*p < '0' || *p > '9' || number > (0x7fffffff - (*p - '0')) / 10)
++        goto missing;
++      number = number * 10 + (*p - '0');
++    }
++    for (int i = 0; i < histcount; i++)
++      if (history[histslot(i)].number == number)
++        index = i;
++  }
++  if (index < 0)
++    goto missing;
++  strcpy(line, history[histslot(index)].line);
++  printf("%s\n", line);
++  return 0;
++
++missing:
++  fprintf(2, "history: event not found: %s\n", line);
++  return -1;
++}
++
++// Clear only the typed characters, leaving the prompt in place.
++static void
++replaceline(char *buf, int *len, char *replacement)
++{
++  for (int i = 0; i < *len; i++)
++    write(2, "\b \b", 3);
++  strcpy(buf, replacement);
++  *len = strlen(buf);
++  write(2, buf, *len);
++}
++
++static int
++prefixmatch(char *name, char *prefix)
++{
++  while (*prefix)
++    if (*prefix++ != *name++)
++      return 0;
++  return 1;
++}
++
++// There are no executable permission bits in xv6: identify ELF programs.
++static int
++isprogram(char *path)
++{
++  uint magic;
++  struct stat st;
++  int fd = open(path, O_RDONLY);
++  if (fd < 0)
++    return 0;
++  // In particular, never read /console while looking for executables: that
++  // would block Tab completion and consume the next keyboard character.
++  int ok = fstat(fd, &st) == 0 && st.type == T_FILE &&
++           read(fd, &magic, sizeof(magic)) == sizeof(magic) && magic == ELF_MAGIC;
++  close(fd);
++  return ok;
++}
++
++// Stream matches rather than keeping an arbitrarily sized list of filenames.
++static void
++addmatch(char *name, char *first, int *count)
++{
++  if (*count == 0) {
++    strcpy(first, name);
++  } else {
++    if (*count == 1)
++      fprintf(2, "\n%s", first);
++    fprintf(2, " %s", name);
++  }
++  (*count)++;
++}
++
++static void
++complete(char *buf, int *len, int nbuf)
++{
++  int start = *len;
++  while (start > 0 && !strchr(" \t<|>&;()", buf[start - 1]))
++    start--;
++  int command = 1;
++  for (int i = 0; i < start; i++)
++    if (buf[i] != ' ' && buf[i] != '\t')
++      command = 0;
++
++  char dir[MAXLINE], path[MAXLINE + DIRSIZ + 2];
++  char first[DIRSIZ + 1], name[DIRSIZ + 1];
++  char *prefix = buf + start;
++  int slash = -1;
++  for (int i = start; i < *len; i++)
++    if (buf[i] == '/')
++      slash = i;
++  if (slash >= 0) {
++    int size = slash - start + 1;
++    memmove(dir, buf + start, size);
++    dir[size] = 0;
++    prefix = buf + slash + 1;
++  } else {
++    strcpy(dir, command ? "/" : ".");
++  }
++
++  int count = 0;
++  int fd = open(dir, O_RDONLY);
++  struct stat st;
++  struct dirent de;
++  if (fd >= 0) {
++    if (fstat(fd, &st) == 0 && st.type == T_DIR) {
++      while (read(fd, &de, sizeof(de)) == sizeof(de)) {
++        if (de.inum == 0)
++          continue;
++        memmove(name, de.name, DIRSIZ);
++        name[DIRSIZ] = 0;
++        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0 ||
++            !prefixmatch(name, prefix))
++          continue;
++        strcpy(path, dir);
++        int n = strlen(path);
++        if (n && path[n - 1] != '/')
++          path[n++] = '/';
++        strcpy(path + n, name);
++        if (!command || isprogram(path))
++          addmatch(name, first, &count);
++      }
++    }
++    close(fd);
++  }
++  // Built-ins have no executable file, but are also usable commands.
++  if (command && slash < 0) {
++    if (prefixmatch("cd", prefix))
++      addmatch("cd", first, &count);
++    if (prefixmatch("history", prefix))
++      addmatch("history", first, &count);
++  }
++  if (count == 1) {
++    char *suffix = first + strlen(prefix);
++    int extra = strlen(suffix);
++    if (*len + extra < nbuf) {
++      strcpy(buf + *len, suffix);
++      *len += extra;
++      write(2, suffix, extra);
++    }
++  } else if (count > 1) {
++    fprintf(2, "\n$ %s", buf);
++  }
++}
+ 
+ struct cmd {
+   int type;
+@@ -134,19 +329,96 @@ runcmd(struct cmd *cmd)
+ int
+ getcmd(char *buf, int nbuf)
+ {
+-  write(2, "$ ", 2);
+   memset(buf, 0, nbuf);
+-  gets(buf, nbuf);
+-  if (buf[0] == 0) // EOF
++  if (!interactive) {
++    // Consume a whole physical line, even if it is too long. Never execute
++    // the tail of an oversized script line as a separate command.
++    for (;;) {
++      int n = 0, overflow = 0, cc;
++      char c;
++      while ((cc = read(0, &c, 1)) == 1 && c != '\n') {
++        if (n + 1 < nbuf)
++          buf[n++] = c;
++        else
++          overflow = 1;
++      }
++      buf[n] = 0;
++      if (cc < 0 || (cc == 0 && n == 0 && !overflow))
++        return -1;
++      if (!overflow)
++        return 0;
++      fprintf(2, "sh: line too long\n");
++    }
++  }
++
++  if (consolemode(1) < 0) {
++    fprintf(2, "sh: cannot enable console input\n");
+     return -1;
+-  return 0;
++  }
++  write(2, "$ ", 2);
++  int len = 0, position = histcount, escape = 0, eof = 0;
++  char draft[MAXLINE];
++  draft[0] = 0;
++
++  for (;;) {
++    uchar c;
++    if (read(0, &c, 1) != 1) {
++      eof = 1;
++      break;
++    }
++    if (escape == 1) {
++      escape = (c == '[' || c == 'O') ? 2 : 0;
++      if (escape)
++        continue;
++    } else if (escape == 2) {
++      // Ignore parameters (e.g. modified arrow keys) until the final byte.
++      if (c >= 0x30 && c <= 0x3f)
++        continue;
++      escape = 0;
++      if (c == 'A' && position > 0) {
++        if (position == histcount)
++          strcpy(draft, buf);
++        position--;
++        replaceline(buf, &len, history[histslot(position)].line);
++      } else if (c == 'B' && position < histcount) {
++        position++;
++        replaceline(buf, &len, position == histcount
++                    ? draft : history[histslot(position)].line);
++      }
++      continue;
++    }
++
++    if (c == '\033') {
++      escape = 1;
++    } else if (c == '\n' || c == '\r' || c == 4) {
++      eof = c == 4 && len == 0; // Ctrl-D on an empty line exits this shell.
++      write(2, "\n", 1);
++      break;
++    } else if (c == '\t') {
++      complete(buf, &len, nbuf);
++    } else if (c == '\b' || c == 127) {
++      if (len > 0) {
++        buf[--len] = 0;
++        write(2, "\b \b", 3);
++      }
++    } else if (c == 21) { // Ctrl-U, as in the original cooked console.
++      replaceline(buf, &len, "");
++    } else if (c >= ' ' && c < 127 && len + 1 < nbuf) {
++      buf[len++] = c;
++      buf[len] = 0;
++      write(2, &c, 1);
++    }
++  }
++  consolemode(0);
++  return eof ? -1 : 0;
+ }
+ 
+ int
+ main(void)
+ {
+-  static char buf[100];
++  static char buf[MAXLINE];
+   int fd;
++  struct stat st;
+ 
+   // Ensure that three file descriptors are open.
+   while ((fd = open("console", O_RDWR)) >= 0) {
+@@ -156,18 +428,41 @@ main(void)
+     }
+   }
+ 
++  interactive = fstat(0, &st) == 0 && st.type == T_DEVICE;
++
+   // Read and run input commands.
+   while (getcmd(buf, sizeof(buf)) >= 0) {
+     char *cmd = buf;
+     while (*cmd == ' ' || *cmd == '\t')
+       cmd++;
+-    if (*cmd == '\n') // is a blank command
++    // Normalize into the full-size buffer before a longer history expansion.
++    memmove(buf, cmd, strlen(cmd) + 1);
++    cmd = buf;
++    int n = strlen(cmd);
++    while (n > 0 && strchr(" \t\r\n", cmd[n - 1]))
++      cmd[--n] = 0;
++    if (*cmd == 0)
++      continue;
++    if (expandhistory(cmd) < 0)
+       continue;
+-    if (cmd[0] == 'c' && cmd[1] == 'd' && cmd[2] == ' ') {
++    savehistory(cmd);
++
++    if (strcmp(cmd, "history") == 0) {
++      for (int i = 0; i < histcount; i++) {
++        int slot = histslot(i);
++        printf("%d %s\n", history[slot].number, history[slot].line);
++      }
++    } else if (strcmp(cmd, "cd") == 0 ||
++               (cmd[0] == 'c' && cmd[1] == 'd' &&
++                (cmd[2] == ' ' || cmd[2] == '\t'))) {
+       // Chdir must be called by the parent, not the child.
+-      cmd[strlen(cmd) - 1] = 0; // chop \n
+-      if (chdir(cmd + 3) < 0)
+-        fprintf(2, "cannot cd %s\n", cmd + 3);
++      char *path = cmd + 2;
++      while (*path == ' ' || *path == '\t')
++        path++;
++      if (*path == 0)
++        path = "/";
++      if (chdir(path) < 0)
++        fprintf(2, "cannot cd %s\n", path);
+     } else {
+       if (fork1() == 0)
+         runcmd(parsecmd(cmd));
+diff --git a/user/user.h b/user/user.h
+index 29aad59..215270c 100644
+--- a/user/user.h
++++ b/user/user.h
+@@ -25,6 +25,7 @@ char *sys_sbrk(int, int);
+ int pause(int);
+ int uptime(void);
+ int sync(void);
++int consolemode(int raw); // 1: character input without echo; 0: normal input.
+ 
+ // ulib.c
+ int stat(const char *, struct stat *);
+diff --git a/user/usys.pl b/user/usys.pl
+index 4d054e8..7b39fbb 100755
+--- a/user/usys.pl
++++ b/user/usys.pl
+@@ -43,3 +43,4 @@ entry("sbrk");
+ entry("pause");
+ entry("uptime");
+ entry("sync");
++entry("consolemode");

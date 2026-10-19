@@ -1,0 +1,24 @@
+
+xv6 kernel is booting
+
+hart 1 starting
+hart 2 starting
+init: starting sh
+$ echo first
+first
+$ !!
+echo first
+first
+$ echo second
+second
+$ !1
+echo first
+first
+$ history
+1 echo first
+2 echo first
+3 echo second
+4 echo first
+5 history
+$ QEMU: Terminated
+

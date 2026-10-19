@@ -1,0 +1,12 @@
+
+xv6 kernel is booting
+
+hart 1 starting
+hart 2 starting
+init: starting sh
+$ echo ARROW
+ARROW
+$ echo DRAFT          echo ARROW          echo DRAFT          echo ARROW S
+ARROS
+$ QEMU: Terminated
+

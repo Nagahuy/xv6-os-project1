@@ -1,0 +1,25 @@
+riscv64-linux-gnu-ld: warning: kernel/kernel has a LOAD segment with RWX permissions
+riscv64-linux-gnu-ld: warning: user/_forktest has a LOAD segment with RWX permissions
+nmeta 47 (boot, super, log blocks 31, inode blocks 13, bitmap blocks 1) blocks 1953 total 2000
+balloc: first 1016 blocks have been allocated
+balloc: write bitmap block at sector 46
+nmeta 47 (boot, super, log blocks 31, inode blocks 13, bitmap blocks 1) blocks 1953 total 2000
+balloc: first 1052 blocks have been allocated
+balloc: write bitmap block at sector 46
+test_arrows_restore_draft_and_allow_editing (__main__.ShellTests.test_arrows_restore_draft_and_allow_editing) ... ok
+test_background_exit_does_not_flush_cooked_input (__main__.ShellTests.test_background_exit_does_not_flush_cooked_input) ... ok
+test_completion_in_current_directory_and_long_name (__main__.ShellTests.test_completion_in_current_directory_and_long_name) ... ok
+test_history_and_expansion (__main__.ShellTests.test_history_and_expansion) ... ok
+test_history_errors_and_eviction (__main__.ShellTests.test_history_errors_and_eviction) ... ok
+test_normal_program_console_and_pipes (__main__.ShellTests.test_normal_program_console_and_pipes) ... ok
+test_raw_mode_lifecycle_and_ownership (__main__.ShellTests.test_raw_mode_lifecycle_and_ownership) ... ok
+test_script_eof_and_history_expansion_with_leading_spaces (__main__.ShellTests.test_script_eof_and_history_expansion_with_leading_spaces) ... ok
+test_script_has_no_prompt (__main__.ShellTests.test_script_has_no_prompt) ... ok
+test_tab_command_and_file_before_enter (__main__.ShellTests.test_tab_command_and_file_before_enter) ... ok
+test_tab_empty_prefix_skips_devices (__main__.ShellTests.test_tab_empty_prefix_skips_devices) ... ok
+test_tab_multiple_and_no_match (__main__.ShellTests.test_tab_multiple_and_no_match) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 45.447s
+
+OK

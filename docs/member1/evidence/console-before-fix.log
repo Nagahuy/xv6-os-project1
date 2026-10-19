@@ -1,0 +1,51 @@
+nmeta 47 (boot, super, log blocks 31, inode blocks 13, bitmap blocks 1) blocks 1953 total 2000
+balloc: first 1050 blocks have been allocated
+balloc: write bitmap block at sector 46
+test_background_exit_does_not_flush_cooked_input (__main__.ShellTests.test_background_exit_does_not_flush_cooked_input) ... ERROR
+
+======================================================================
+ERROR: test_background_exit_does_not_flush_cooked_input (__main__.ShellTests.test_background_exit_does_not_flush_cooked_input)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/mnt/d/HieuLT/HDH/Proj1/tests/test_shell.py", line 187, in test_background_exit_does_not_flush_cooked_input
+    c.child.expect_exact("\r\nPARTIAX\r\n")
+  File "/usr/lib/python3/dist-packages/pexpect/spawnbase.py", line 432, in expect_exact
+    return exp.expect_loop(timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/pexpect/expect.py", line 181, in expect_loop
+    return self.timeout(e)
+           ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/pexpect/expect.py", line 144, in timeout
+    raise exc
+pexpect.exceptions.TIMEOUT: Timeout exceeded.
+<pexpect.pty_spawn.spawn object at 0x747eabb0fb00>
+command: /usr/bin/qemu-system-riscv64
+args: [b'/usr/bin/qemu-system-riscv64', b'-machine', b'virt', b'-bios', b'none', b'-kernel', b'kernel/kernel', b'-m', b'128M', b'-smp', b'3', b'-nographic', b'-global', b'virtio-mmio.force-legacy=false', b'-drive', b'file=/tmp/xv6-shell-57dzq6yv/fs.img,if=none,format=raw,id=x0,snapshot=on', b'-device', b'virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0']
+buffer (last 100 chars): '\nPARTIALX\r\n'
+before (last 100 chars): 'X\r\nPARTIALX\r\n'
+after: <class 'pexpect.exceptions.TIMEOUT'>
+match: None
+match_index: None
+exitstatus: None
+flag_eof: False
+pid: 587
+child_fd: 6
+closed: False
+timeout: 15
+delimiter: <class 'pexpect.exceptions.EOF'>
+logfile: None
+logfile_read: <_io.TextIOWrapper name='/mnt/d/HieuLT/HDH/Proj1/test-results/test_background_exit_does_not_flush_cooked_input.log' mode='w' encoding='utf-8'>
+logfile_send: None
+maxread: 2000
+ignorecase: False
+searchwindowsize: None
+delaybeforesend: 0.05
+delayafterclose: 0.1
+delayafterterminate: 0.1
+searcher: searcher_string:
+    0: '\r\nPARTIAX\r\n'
+
+----------------------------------------------------------------------
+Ran 1 test in 21.329s
+
+FAILED (errors=1)
