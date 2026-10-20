@@ -56,6 +56,8 @@ struct {
   int rawpid; // Owner of character-at-a-time, no-echo input; 0 = cooked.
 } cons;
 
+static void consoleinput(int c);
+
 // Only the owner may release raw mode. It is not inherited by fork.
 // Shell releases it before running commands; exit/exec also release it.
 int
@@ -80,8 +82,18 @@ consolemode(int raw)
     return 0; // A no-op must not commit an unfinished cooked input line.
   }
   cons.rawpid = raw ? p->pid : 0;
-  // Preserve input already queued, including an unfinished cooked line.
-  cons.w = cons.e;
+  if (raw) {
+    cons.w = cons.e;
+  } else {
+    char pending[INPUT_BUF_SIZE];
+    uint n = cons.e - cons.r;
+    for (uint i = 0; i < n; i++)
+      pending[i] = cons.buf[(cons.r + i) % INPUT_BUF_SIZE];
+    cons.w = cons.e = cons.r;
+    // Apply cooked editing to bytes queued before the shell released raw mode.
+    for (uint i = 0; i < n; i++)
+      consoleinput((uchar)pending[i]);
+  }
   wakeup(&cons.r);
   release(&cons.lock);
   return 0;
@@ -171,23 +183,19 @@ consoleread(int user_dst, uint64 dst, int n)
 }
 
 //
-// the console input interrupt handler.
-// uartintr() calls this for each input character.
+// Process input with cons.lock held.
 // do erase/kill processing, append to cons.buf,
 // wake up consoleread() if a whole line has arrived.
 //
-void
-consoleintr(int c)
+static void
+consoleinput(int c)
 {
-  acquire(&cons.lock);
-
   if (cons.rawpid && c != C('P')) {
     if (c != 0 && cons.e - cons.r < INPUT_BUF_SIZE) {
       cons.buf[cons.e++ % INPUT_BUF_SIZE] = c;
       cons.w = cons.e;
       wakeup(&cons.r);
     }
-    release(&cons.lock);
     return; // The user-space editor handles echo, erase, Tab and ESC.
   }
 
@@ -228,7 +236,13 @@ consoleintr(int c)
     }
     break;
   }
+}
 
+void
+consoleintr(int c)
+{
+  acquire(&cons.lock);
+  consoleinput(c);
   release(&cons.lock);
 }
 

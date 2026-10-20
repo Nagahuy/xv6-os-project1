@@ -175,6 +175,18 @@ class ShellTests(unittest.TestCase):
         c.child.expect_exact("$ ")
         self.assertIn("DONE", c.command("echo DONE"))
 
+    def test_typeahead_backspace_reaches_program_as_cooked_input(self):
+        c = self.console
+        c.child.send("wc\nFOO\x7fX\n\x04")
+        c.child.expect_exact("$ ")
+        self.assertRegex(c.child.before.replace("\r", ""), r"(?m)(?:^|\x04)1 1 4 $")
+
+    def test_typeahead_ctrl_u_reaches_program_as_cooked_input(self):
+        c = self.console
+        c.child.send("wc\nOLD\x15NEW\n\x04")
+        c.child.expect_exact("$ ")
+        self.assertRegex(c.child.before.replace("\r", ""), r"(?m)(?:^|\x04)1 1 4 $")
+
     def test_background_exit_does_not_flush_cooked_input(self):
         c = self.console
         c.command("consoleprobe delayed &")
