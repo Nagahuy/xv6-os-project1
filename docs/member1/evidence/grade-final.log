@@ -41,67 +41,67 @@ riscv64-linux-gnu-ld: warning: kernel/kernel has a LOAD segment with RWX permiss
 riscv64-linux-gnu-objdump -S kernel/kernel > kernel/kernel.asm
 riscv64-linux-gnu-objdump -t kernel/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$/d' > kernel/kernel.sym
 make[1]: Leaving directory '/mnt/d/HieuLT/HDH/Proj1'
-== Test sleep, no arguments == sleep, no arguments: FAIL (18.5s) 
+== Test sleep, no arguments == sleep, no arguments: FAIL (33.3s) 
     ...
          init: starting sh
          $ sleep
     BAD  exec sleep failed
-         $ qemu-system-riscv64: terminating on signal 15 from pid 1824 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 1275 (make)
     unexpected lines in output
     QEMU output saved to xv6.out.sleep_no_args
-== Test sleep, returns == sleep, returns: FAIL (2.2s) 
+== Test sleep, returns == sleep, returns: FAIL (3.9s) 
     ...
          init: starting sh
          $ sleep
     BAD  exec sleep failed
          $ echo OK
     GOOD OK
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2306 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 1757 (make)
     unexpected lines in output
     QEMU output saved to xv6.out.sleep_no_args
-== Test sleep, makes syscall == sleep, makes syscall: FAIL (2.4s) 
+== Test sleep, makes syscall == sleep, makes syscall: FAIL (4.1s) 
     ...
-         hart 1 starting
+         hart 2 starting
          init: starting sh
     GOOD $ sleep 10
          exec sleep failed
          $ echo FAIL
     BAD  FAIL
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2344 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 1795 (make)
     unexpected lines in output
     QEMU output saved to xv6.out.sleep
-== Test sixfive_test == sixfive_test: FAIL (5.3s) 
+== Test sixfive_test == sixfive_test: FAIL (5.9s) 
     ...
          hart 2 starting
          init: starting sh
          $ sixfive sixfive.txt
          exec sixfive failed
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2382 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 1833 (make)
     MISSING '^5'
     MISSING '^100'
     MISSING '^18'
     MISSING '^6'
     QEMU output saved to xv6.out.sixfive_test
-== Test sixfive_readme == sixfive_readme: FAIL (2.2s) 
+== Test sixfive_readme == sixfive_readme: FAIL (4.0s) 
     ...
          hart 1 starting
          init: starting sh
          $ sixfive README
          exec sixfive failed
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2420 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 1871 (make)
     MISSING '^6'
     MISSING '^6'
     MISSING '^1810'
     MISSING '^6'
     MISSING '^1810'
     QEMU output saved to xv6.out.sixfive_readme
-== Test sixfive_all == sixfive_all: FAIL (2.4s) 
+== Test sixfive_all == sixfive_all: FAIL (3.9s) 
     ...
-         hart 1 starting
+         hart 2 starting
          init: starting sh
          $ sixfive sixfive.txt README
          exec sixfive failed
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2458 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 1909 (make)
     MISSING '^5'
     MISSING '^100'
     MISSING '^18'
@@ -112,61 +112,61 @@ make[1]: Leaving directory '/mnt/d/HieuLT/HDH/Proj1'
     MISSING '^6'
     MISSING '^1810'
     QEMU output saved to xv6.out.sixfive_readme
-== Test memdump, examples == memdump, examples: OK (2.2s) 
-== Test memdump, format ii, S, p == memdump, format ii, S, p: OK (2.5s) 
-== Test find, in current directory == find, in current directory: FAIL (2.5s) 
+== Test memdump, examples == memdump, examples: OK (3.9s) 
+== Test memdump, format ii, S, p == memdump, format ii, S, p: OK (4.0s) 
+== Test find, in current directory == find, in current directory: FAIL (4.0s) 
     ...
          init: starting sh
-         $ echo > lJea9JEU
-         $ find . lJea9JEU
+         $ echo > 3g6Rbvyu
+         $ find . 3g6Rbvyu
          exec find failed
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2573 (make)
-    MISSING './lJea9JEU'
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2026 (make)
+    MISSING './3g6Rbvyu'
     QEMU output saved to xv6.out.find_curdir
-== Test find, in sub-directory == find, in sub-directory: FAIL (2.5s) 
+== Test find, in sub-directory == find, in sub-directory: FAIL (4.2s) 
     ...
-         $ mkdir ITeiLdRF
-         $ echo > ITeiLdRF/KOeVCsEO
-         $ find ITeiLdRF KOeVCsEO
+         $ mkdir U4xg3vko
+         $ echo > U4xg3vko/wIPF5yWd
+         $ find U4xg3vko wIPF5yWd
          exec find failed
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2611 (make)
-    MISSING 'ITeiLdRF/KOeVCsEO'
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2064 (make)
+    MISSING 'U4xg3vko/wIPF5yWd'
     QEMU output saved to xv6.out.find_subdir
-== Test find, recursive == find, recursive: FAIL (2.7s) 
+== Test find, recursive == find, recursive: FAIL (4.8s) 
     ...
-         $ mkdir ANVVbsWf
-         $ echo > ANVVbsWf/kVwnVoqc
-         $ find . kVwnVoqc
+         $ mkdir eXN8Q7Mu
+         $ echo > eXN8Q7Mu/eF0ezxRA
+         $ find . eF0ezxRA
          exec find failed
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2649 (make)
-    MISSING './w032pY9j/kVwnVoqc'
-    MISSING './w032pY9j/m5LYL3gH/kVwnVoqc'
-    MISSING './ANVVbsWf/kVwnVoqc'
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2102 (make)
+    MISSING './P1yfVO5X/eF0ezxRA'
+    MISSING './P1yfVO5X/2wVDTM65/eF0ezxRA'
+    MISSING './eXN8Q7Mu/eF0ezxRA'
     QEMU output saved to xv6.out.find_recursive
-== Test exec == exec: FAIL (2.2s) 
+== Test exec == exec: FAIL (6.1s) 
     ...
          hart 1 starting
          init: starting sh
          $ find . wc -exec echo
          exec find failed
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2687 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2140 (make)
     MISSING '^./wc$'
     QEMU output saved to xv6.out.find_exec
-== Test exec, multiple args == exec, multiple args: FAIL (2.3s) 
+== Test exec, multiple args == exec, multiple args: FAIL (4.0s) 
     Number of appearances of 'hello'
     got:
       1
     expected:
       5
     QEMU output saved to xv6.out.find_exec_args
-== Test exec via sh script == Timeout! exec via sh script: FAIL (33.9s) 
+== Test exec via sh script == Timeout! exec via sh script: FAIL (34.6s) 
     Number of appearances of 'hello'
     got:
       0
     expected:
       3
     QEMU output saved to xv6.out.test_find_sh
-== Test sleep, zero and non-numeric args return == sleep, zero and non-numeric args return: FAIL (2.2s) 
+== Test sleep, zero and non-numeric args return == sleep, zero and non-numeric args return: FAIL (3.9s) 
     ...
          init: starting sh
          $ sleep 0
@@ -175,23 +175,23 @@ make[1]: Leaving directory '/mnt/d/HieuLT/HDH/Proj1'
     BAD  exec sleep failed
          $ echo OK0
     GOOD OK0
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2801 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2256 (make)
     unexpected lines in output
     QEMU output saved to xv6.out.sleep_corner_args
-== Test sixfive, stdin and missing file == sixfive, stdin and missing file: FAIL (2.4s) 
+== Test sixfive, stdin and missing file == sixfive, stdin and missing file: FAIL (3.9s) 
     ...
-         $ sixfive Y4BY5sWN
+         $ sixfive AjY0MGAF
          exec sixfive failed
          $ echo DONE
          DONE
-         $ qemu-system-riscv64: terminating on signal 15 from pid 2839 (make)
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2294 (make)
     MISSING '^12$'
     MISSING '^30$'
     MISSING '^.*cannot open'
     QEMU output saved to xv6.out.sixfive_corner
-== Test memdump, formats h c, bounds checking, usage == memdump, formats h c, bounds checking, usage: OK (2.7s) 
-== Test find, missing target, no duplicates, directory match == find, missing target, no duplicates, directory match: FAIL (2.6s) 
-    times POXg6NpF reported by find
+== Test memdump, formats h c, bounds checking, usage == memdump, formats h c, bounds checking, usage: OK (4.2s) 
+== Test find, missing target, no duplicates, directory match == find, missing target, no duplicates, directory match: FAIL (4.4s) 
+    times t5p4INU7 reported by find
     got:
       0
     expected:

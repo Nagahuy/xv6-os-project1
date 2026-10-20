@@ -5,7 +5,7 @@ hart 2 starting
 hart 1 starting
 init: starting sh
 $ 
-cat dorphan echo forktest forphan grep grind init kill ln logstress ls memdump mkdir rm sh stressfs sync usertests wc zombie consoleprobe cd history
+cat dorphan echo find forktest forphan grep grind init kill ln logstress ls memdump mkdir rm sh stressfs sync usertests wc zombie consoleprobe cd history
 $ consoleprobe            echo DEVICE_SAFE
 DEVICE_SAFE
 $ QEMU: Terminated

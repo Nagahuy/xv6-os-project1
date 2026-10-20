@@ -1,0 +1,116 @@
+make: 'kernel/kernel' is up to date.
+== Test sleep, no arguments == sleep, no arguments: FAIL (8.3s) 
+    ...
+         init: starting sh
+         $ sleep
+    BAD  exec sleep failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2818 (make)
+    unexpected lines in output
+    QEMU output saved to xv6.out.sleep_no_args
+== Test sleep, returns == sleep, returns: FAIL (3.7s) 
+    ...
+         init: starting sh
+         $ sleep
+    BAD  exec sleep failed
+         $ echo OK
+    GOOD OK
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2858 (make)
+    unexpected lines in output
+    QEMU output saved to xv6.out.sleep_no_args
+== Test sleep, makes syscall == sleep, makes syscall: FAIL (4.0s) 
+    ...
+         hart 2 starting
+         init: starting sh
+    GOOD $ sleep 10
+         exec sleep failed
+         $ echo FAIL
+    BAD  FAIL
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2896 (make)
+    unexpected lines in output
+    QEMU output saved to xv6.out.sleep
+== Test sixfive_test == sixfive_test: FAIL (3.7s) 
+    ...
+         hart 2 starting
+         init: starting sh
+         $ sixfive sixfive.txt
+         exec sixfive failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2934 (make)
+    MISSING '^5'
+    MISSING '^100'
+    MISSING '^18'
+    MISSING '^6'
+    QEMU output saved to xv6.out.sixfive_test
+== Test sixfive_readme == sixfive_readme: FAIL (4.1s) 
+    ...
+         hart 1 starting
+         init: starting sh
+         $ sixfive README
+         exec sixfive failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 2972 (make)
+    MISSING '^6'
+    MISSING '^6'
+    MISSING '^1810'
+    MISSING '^6'
+    MISSING '^1810'
+    QEMU output saved to xv6.out.sixfive_readme
+== Test sixfive_all == sixfive_all: FAIL (4.1s) 
+    ...
+         hart 1 starting
+         init: starting sh
+         $ sixfive sixfive.txt README
+         exec sixfive failed
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3012 (make)
+    MISSING '^5'
+    MISSING '^100'
+    MISSING '^18'
+    MISSING '^6'
+    MISSING '^6'
+    MISSING '^6'
+    MISSING '^1810'
+    MISSING '^6'
+    MISSING '^1810'
+    QEMU output saved to xv6.out.sixfive_readme
+== Test memdump, examples == memdump, examples: OK (4.1s) 
+== Test memdump, format ii, S, p == memdump, format ii, S, p: OK (6.1s) 
+== Test find, in current directory == find, in current directory: OK (4.2s) 
+    (Old xv6.out.find_curdir failure log removed)
+== Test find, in sub-directory == find, in sub-directory: OK (4.3s) 
+    (Old xv6.out.find_subdir failure log removed)
+== Test find, recursive == find, recursive: OK (4.8s) 
+    (Old xv6.out.find_recursive failure log removed)
+== Test exec == exec: OK (4.0s) 
+    (Old xv6.out.find_exec failure log removed)
+== Test exec, multiple args == exec, multiple args: OK (4.2s) 
+    (Old xv6.out.find_exec_args failure log removed)
+== Test exec via sh script == Timeout! exec via sh script: OK (34.5s) 
+    (Old xv6.out.test_find_sh failure log removed)
+== Test sleep, zero and non-numeric args return == sleep, zero and non-numeric args return: FAIL (4.1s) 
+    ...
+         init: starting sh
+         $ sleep 0
+    BAD  exec sleep failed
+         $ sleep z
+    BAD  exec sleep failed
+         $ echo OK0
+    GOOD OK0
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3361 (make)
+    unexpected lines in output
+    QEMU output saved to xv6.out.sleep_corner_args
+== Test sixfive, stdin and missing file == sixfive, stdin and missing file: FAIL (4.1s) 
+    ...
+         $ sixfive hcleM2dj
+         exec sixfive failed
+         $ echo DONE
+         DONE
+         $ qemu-system-riscv64: terminating on signal 15 from pid 3399 (make)
+    MISSING '^12$'
+    MISSING '^30$'
+    MISSING '^.*cannot open'
+    QEMU output saved to xv6.out.sixfive_corner
+== Test memdump, formats h c, bounds checking, usage == memdump, formats h c, bounds checking, usage: OK (6.1s) 
+== Test find, missing target, no duplicates, directory match == find, missing target, no duplicates, directory match: OK (4.9s) 
+    (Old xv6.out.find_corner failure log removed)
+== Test time == 
+time: FAIL 
+    Cannot read time.txt
+Score: 95/156

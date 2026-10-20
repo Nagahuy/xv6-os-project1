@@ -1,5 +1,35 @@
 # Kết quả kiểm thử Thành viên 1
 
+## Kiểm tra tích hợp mới nhất: 20/10/2026
+
+Đã merge `origin/util` tại `1c1c51e` vào nhánh riêng `feature/m1-util-memdump-shell`.
+Find/Exec đến từ thành viên 2; không sửa logic của bài đó.
+
+| Kiểm tra trên bản tích hợp | Kết quả |
+| --- | --- |
+| Memdump với trang nhớ bảo vệ | 15/15 ca, OK |
+| Shell/console tương tác thực trong QEMU | 12/12 test, OK |
+| Grader Memdump chính thức | 3/3 nhóm, OK |
+| Toàn bộ grade-lab-util | 95/156; 10 nhóm OK, 9 nhóm FAIL |
+| clang-format 23.1.3, toàn bộ C/header | OK |
+| git diff --check | OK |
+
+Chín nhóm FAIL còn lại thuộc sleep (4), sixfive (4) và time.txt (1), ngoài phân công này.
+Find/Exec đạt cả 7 nhóm. `exec via sh script` vẫn in cảnh báo Timeout từ monitor cũ, nhưng cuối cùng
+được grader đánh dấu OK vì nội dung đúng. Không sửa grader.
+
+CI Linux của commit cũ `094b77f` dừng tại `make fmt && git diff --exit-code`.
+Kiểm tra cục bộ xác định chỉ dư dòng trống ở `kernel/param.h` và `kernel/riscv.h`;
+đã chuẩn hóa hai file này, xác nhận không thay đổi token C. Đây là thay đổi format bổ sung.
+CI của commit mới cần xem trực tiếp trên PR; kết quả cục bộ không thay thế trạng thái CI.
+
+Log tích hợp: `evidence/integration-grade.log`, `evidence/integration-grades.json`.
+Log Memdump và Shell trong evidence/ được cập nhật từ lần chạy này.
+Patch `Release/util.patch` đã kiểm tra áp dụng trên `util` tại `1c1c51e` và đối chiếu từng file nguồn.
+Báo cáo PDF giữ snapshot ngày 19/10/2026; phần dưới là dữ liệu lịch sử trước khi tích hợp Find/Exec.
+
+## Snapshot trước khi tích hợp Find/Exec
+
 Ngày: 19/10/2026. Base: origin/util, 8138d07.
 Môi trường: Ubuntu 24.04 WSL2, RISC-V GCC 13.3.0, QEMU 8.2.2, Python 3.12.3.
 

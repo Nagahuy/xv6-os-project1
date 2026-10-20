@@ -2,7 +2,9 @@
 
 Repo: https://github.com/Nagahuy/xv6-os-project1
 
-Base: `origin/util`, commit `8138d07`. Branch làm bài: `feature/m1-util-memdump-shell`.
+Base ban đầu: `origin/util`, commit `8138d07`. Branch làm bài: `feature/m1-util-memdump-shell`.
+Đã đồng bộ `util` tại `1c1c51e` ngày 20/10/2026, bao gồm Find/Exec của thành viên 2.
+Kết quả kiểm tra tích hợp mới nhất xem đầu `TEST_RESULTS.md`; báo cáo PDF giữ snapshot ngày 19/10.
 
 ## 1. Chạy trên máy hiện tại
 
@@ -58,7 +60,8 @@ Test Shell tạo image tạm có chương trình `consoleprobe` và các script 
 bash tests/run-member1.sh --full-grade
 ```
 
-Bộ chấm có các bài `sleep`, `sixfive`, `find`/`exec` và `time.txt` chưa có trong base. Vì vậy **toàn bộ grade chưa xanh**;
+Bộ chấm có các bài `sleep`, `sixfive` và `time.txt` chưa có trong base; Find/Exec đã được đồng bộ từ thành viên 2.
+Vì vậy **toàn bộ grade chưa xanh**;
 xem `TEST_RESULTS.md` để phân biệt các lỗi đó với phần Memdump/Shell. Không sửa grader để bỏ qua bài khác.
 
 ## 3. Kịch bản demo
