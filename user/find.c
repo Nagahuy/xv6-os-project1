@@ -61,53 +61,86 @@ run_cmd(char **cmd_argv, char *filename)
 void
 find(char *path, char *target_name, char **cmd_argv)
 {
+  char buf[MAXPATH];
+  struct {
+    int len;
+    int entries;
+  } dirs[MAXPATH / 2]; // Each level adds at least a slash and one name byte.
+  int depth = 0;
   int fd;
   struct stat st;
+  struct dirent de;
 
-  if ((fd = open(path, 0)) < 0) {
-    fprintf(2, "find: cannot open %s\n", path);
+  if (strlen(path) >= sizeof(buf)) {
+    fprintf(2, "find: path too long\n");
     return;
+  }
+  strcpy(buf, path);
+  dirs[0].len = strlen(buf);
+  dirs[0].entries = 0;
+
+visit:
+  if ((fd = open(buf, 0)) < 0) {
+    fprintf(2, "find: cannot open %s\n", buf);
+    goto backtrack;
   }
   if (fstat(fd, &st) < 0) {
-    fprintf(2, "find: cannot stat %s\n", path);
+    fprintf(2, "find: cannot stat %s\n", buf);
     close(fd);
-    return;
+    goto backtrack;
   }
 
-  char *end = path + strlen(path);
-  while (end > path && end[-1] == '/')
+  char *end = buf + dirs[depth].len;
+  while (end > buf && end[-1] == '/')
     end--;
   char *name = end;
-  while (name > path && name[-1] != '/')
+  while (name > buf && name[-1] != '/')
     name--;
-  if (strlen(target_name) == end - name &&
+  if (dirs[depth].entries == 0 && strlen(target_name) == end - name &&
       memcmp(name, target_name, end - name) == 0) {
     if (cmd_argv == 0)
-      printf("%s\n", path);
+      printf("%s\n", buf);
     else
-      run_cmd(cmd_argv, path);
+      run_cmd(cmd_argv, buf);
   }
 
   if (st.type == T_DIR) {
-    struct dirent de;
-    char buf[512];
-    if (strlen(path) + 1 + DIRSIZ + 1 > sizeof(buf)) {
-      fprintf(2, "find: path too long\n");
-      close(fd);
-      return;
+    // Reopen and resume the parent so traversal keeps only one descriptor.
+    for (int i = 0; i < dirs[depth].entries; i++) {
+      if (read(fd, &de, sizeof(de)) != sizeof(de))
+        break;
     }
-    strcpy(buf, path);
-    char *p = buf + strlen(buf);
-    *p++ = '/';
     while (read(fd, &de, sizeof(de)) == sizeof(de)) {
+      dirs[depth].entries++;
       if (de.inum == 0)
         continue;
-      memmove(p, de.name, DIRSIZ);
-      p[DIRSIZ] = 0;
-      if (strcmp(p, ".") == 0 || strcmp(p, "..") == 0)
+      if (de.name[0] == '.' &&
+          (de.name[1] == 0 || (de.name[1] == '.' && de.name[2] == 0)))
         continue;
-      find(buf, target_name, cmd_argv);
+      int n = 0;
+      while (n < DIRSIZ && de.name[n])
+        n++;
+      int len = dirs[depth].len;
+      if (len + 1 + n + 1 > sizeof(buf)) {
+        fprintf(2, "find: path too long\n");
+        continue;
+      }
+      buf[len] = '/';
+      memmove(buf + len + 1, de.name, n);
+      buf[len + 1 + n] = 0;
+      close(fd);
+      depth++;
+      dirs[depth].len = len + 1 + n;
+      dirs[depth].entries = 0;
+      goto visit;
     }
   }
   close(fd);
+
+backtrack:
+  if (depth > 0) {
+    depth--;
+    buf[dirs[depth].len] = 0;
+    goto visit;
+  }
 }
