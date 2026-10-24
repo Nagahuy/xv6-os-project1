@@ -21,3 +21,4 @@ barrier
 *.pcap
 TAGS
 /fs.img.bk
+/test-results/
