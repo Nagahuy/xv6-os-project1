@@ -172,6 +172,7 @@ vmprint_level(pagetable_t pagetable, int level, uint64 va_base)
         if (pte & PTE_W) printk("W");
         if (pte & PTE_X) printk("X");
         if (pte & PTE_U) printk("U");
+        if (level == 1) printk(" superpage");
       }
       printk("\n");
 
