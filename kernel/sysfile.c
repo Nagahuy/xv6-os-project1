@@ -256,7 +256,7 @@ bad:
 }
 
 static struct inode *
-create(char *path, short type, short major, short minor)
+create(char *path, short type, short major, short minor, char *target)
 {
   struct inode *ip, *dp;
   char name[DIRSIZ];
@@ -280,7 +280,8 @@ create(char *path, short type, short major, short minor)
   if ((ip = dirlookup(dp, name, 0)) != 0) {
     iunlockput(dp);
     ilock(ip);
-    if (type == T_FILE && (ip->type == T_FILE || ip->type == T_DEVICE))
+    if (type == T_FILE &&
+        (ip->type == T_FILE || ip->type == T_DEVICE || ip->type == T_SYMLINK))
       return ip;
     iunlockput(ip);
     return 0;
@@ -300,6 +301,14 @@ create(char *path, short type, short major, short minor)
   if (type == T_DIR) { // Create . and .. entries.
     // No ip->nlink++ for ".": avoid cyclic ref count.
     if (dirlink(ip, ".", ip->inum) < 0 || dirlink(ip, "..", dp->inum) < 0)
+      goto fail;
+  }
+
+  // Initialize the target while the parent is locked, before publishing
+  // the name. Failed writes reclaim the unpublished inode via fail below.
+  if (type == T_SYMLINK) {
+    int len = strlen(target) + 1;
+    if (writei(ip, 0, (uint64)target, 0, len) != len)
       goto fail;
   }
 
@@ -326,6 +335,25 @@ fail:
 }
 
 uint64
+sys_symlink(void)
+{
+  char target[MAXPATH], path[MAXPATH];
+  if (argstr(0, target, sizeof(target)) <= 0 ||
+      argstr(1, path, sizeof(path)) <= 0)
+    return -1;
+
+  begin_op();
+  struct inode *ip = create(path, T_SYMLINK, 0, 0, target);
+  if (ip == 0) {
+    end_op();
+    return -1;
+  }
+  iunlockput(ip);
+  end_op();
+  return 0;
+}
+
+uint64
 sys_open(void)
 {
   char path[MAXPATH];
@@ -341,7 +369,7 @@ sys_open(void)
   begin_op();
 
   if (omode & O_CREATE) {
-    ip = create(path, T_FILE, 0, 0);
+    ip = create(path, T_FILE, 0, 0, 0);
     if (ip == 0) {
       end_op();
       return -1;
@@ -352,11 +380,33 @@ sys_open(void)
       return -1;
     }
     ilock(ip);
-    if (ip->type == T_DIR && omode != O_RDONLY) {
+  }
+
+  int depth = 0;
+  while (ip->type == T_SYMLINK && !(omode & O_NOFOLLOW)) {
+    // Relative targets are resolved from cwd, matching this lab's scope.
+    uint len = ip->size;
+    if (depth++ >= 10 || len < 2 || len > sizeof(path) ||
+        readi(ip, 0, (uint64)path, 0, len) != len || path[len - 1] != 0 ||
+        strlen(path) != len - 1) {
       iunlockput(ip);
       end_op();
       return -1;
     }
+    iunlockput(ip);
+    if ((ip = namei(path)) == 0) {
+      end_op();
+      return -1;
+    }
+    ilock(ip);
+  }
+
+  // Directory symlinks are outside the lab. Ordinary read-only directory
+  // opens still work, including with the harmless O_NOFOLLOW flag.
+  if (ip->type == T_DIR && (depth || (omode & (O_WRONLY | O_RDWR | O_TRUNC)))) {
+    iunlockput(ip);
+    end_op();
+    return -1;
   }
 
   if (ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)) {
@@ -401,7 +451,8 @@ sys_mkdir(void)
   struct inode *ip;
 
   begin_op();
-  if (argstr(0, path, MAXPATH) < 0 || (ip = create(path, T_DIR, 0, 0)) == 0) {
+  if (argstr(0, path, MAXPATH) < 0 ||
+      (ip = create(path, T_DIR, 0, 0, 0)) == 0) {
     end_op();
     return -1;
   }
@@ -421,7 +472,7 @@ sys_mknod(void)
   argint(1, &major);
   argint(2, &minor);
   if ((argstr(0, path, MAXPATH)) < 0 ||
-      (ip = create(path, T_DEVICE, major, minor)) == 0) {
+      (ip = create(path, T_DEVICE, major, minor, 0)) == 0) {
     end_op();
     return -1;
   }
