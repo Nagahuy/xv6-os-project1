@@ -139,15 +139,13 @@ sys_pgaccess(void)
     pte_t *pte = walk(p->pagetable, va, 0);
 
     // Nếu trang chưa được ánh xạ hoặc không hợp lệ -> báo lỗi -1
-    if (pte == 0 || (*pte & PTE_V) == 0)
+    if (pte == 0 || (*pte & (PTE_V | PTE_U)) != (PTE_V | PTE_U))
       return -1;
 
     // 3. Nếu trang đã được truy cập (bit PTE_A được bật)
     if (*pte & PTE_A) {
       // Bật bit thứ i trong mảng mask
       mask[i / 8] |= (1 << (i % 8));
-      // BẮT BUỘC: Xóa bit PTE_A để lần sau kiểm tra lại chính xác
-      *pte &= ~PTE_A;
     }
   }
 
@@ -155,6 +153,15 @@ sys_pgaccess(void)
   int mask_bytes = (npages + 7) / 8;
   if (copyout(p->pagetable, p->sz, user_mask_addr, (char *)mask, mask_bytes) < 0)
     return -1;
+
+  // Consume access bits only after the result has been copied successfully.
+  for (int i = 0; i < npages; i++) {
+    if (mask[i / 8] & (1 << (i % 8))) {
+      uint64 va = va_start + (uint64)i * PGSIZE;
+      pte_t *pte = walk(p->pagetable, va, 0);
+      *pte &= ~PTE_A;
+    }
+  }
 
   return 0;
 }
