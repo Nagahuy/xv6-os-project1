@@ -148,10 +148,48 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
 
 #if defined(LAB_PGTBL) || defined(SOL_MMAP) || defined(SOL_COW)
+// Hàm đệ quy in các cấp của bảng trang
+void
+vmprint_level(pagetable_t pagetable, int level, uint64 va_base)
+{
+  for (int i = 0; i < 512; i++) {
+    pte_t pte = pagetable[i];
+    if (pte & PTE_V) {
+      uint64 va = va_base | ((uint64)i << PXSHIFT(level));
+
+      // In thụt lề: level 2 -> 1 lần " .."; level 1 -> 2 lần; level 0 -> 3 lần
+      for (int k = 0; k < (2 - level + 1); k++) {
+        printk(" ..");
+      }
+
+      // In thông tin entry
+      printk("%p: pte %p pa %p", (void *)va, (void *)pte, (void *)PTE2PA(pte));
+
+      // In cờ quyền nếu là trang lá
+      if (pte & (PTE_R | PTE_W | PTE_X)) {
+        printk(" ");
+        if (pte & PTE_R) printk("R");
+        if (pte & PTE_W) printk("W");
+        if (pte & PTE_X) printk("X");
+        if (pte & PTE_U) printk("U");
+      }
+      printk("\n");
+
+      // Nếu không phải trang lá và chưa phải cấp cuối thì đệ quy xuống bảng con
+      if ((pte & (PTE_R | PTE_W | PTE_X)) == 0 && level > 0) {
+        uint64 child = PTE2PA(pte);
+        vmprint_level((pagetable_t)child, level - 1, va);
+      }
+    }
+  }
+}
+
+// Hàm vmprint được gọi từ syscall sys_vmprint
 void
 vmprint(pagetable_t pagetable)
 {
-  // your code here
+  printk("page table %p\n", pagetable);
+  vmprint_level(pagetable, 2, 0);
 }
 #endif
 
@@ -536,5 +574,7 @@ ismapped(pagetable_t pagetable, uint64 va)
   }
   return 0;
 }
+
+
 
 
