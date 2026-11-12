@@ -110,7 +110,52 @@ sys_vmprint(void)
 int
 sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
+  uint64 va_start;
+  int npages;
+  uint64 user_mask_addr;
+
+  // 1. Đọc các tham số truyền vào từ user space
+  argaddr(0, &va_start);
+  argint(1, &npages);
+  argaddr(2, &user_mask_addr);
+
+  // Kiểm tra giới hạn số trang hợp lý (pgtbltest test tới 256 và 4096 trang)
+  if (npages < 0 || npages > 4096)
+    return -1;
+
+  struct proc *p = myproc();
+  
+  // Dùng mảng byte làm bộ đệm bitmask trong kernel (4096 trang / 8 = 512 bytes)
+  unsigned char mask[512];
+  memset(mask, 0, sizeof(mask));
+
+  // 2. Duyệt qua từng trang cần kiểm tra
+  for (int i = 0; i < npages; i++) {
+    uint64 va = va_start + (uint64)i * PGSIZE;
+    if (va >= MAXVA)
+      return -1;
+
+    // Tìm PTE tương ứng với địa chỉ ảo va (alloc = 0: không cấp phát thêm bảng mới)
+    pte_t *pte = walk(p->pagetable, va, 0);
+
+    // Nếu trang chưa được ánh xạ hoặc không hợp lệ -> báo lỗi -1
+    if (pte == 0 || (*pte & PTE_V) == 0)
+      return -1;
+
+    // 3. Nếu trang đã được truy cập (bit PTE_A được bật)
+    if (*pte & PTE_A) {
+      // Bật bit thứ i trong mảng mask
+      mask[i / 8] |= (1 << (i % 8));
+      // BẮT BUỘC: Xóa bit PTE_A để lần sau kiểm tra lại chính xác
+      *pte &= ~PTE_A;
+    }
+  }
+
+  // 4. Sao chép kết quả bitmask từ kernel buffer sang user buffer
+  int mask_bytes = (npages + 7) / 8;
+  if (copyout(p->pagetable, p->sz, user_mask_addr, (char *)mask, mask_bytes) < 0)
+    return -1;
+
   return 0;
 }
 #endif
