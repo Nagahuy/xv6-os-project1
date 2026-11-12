@@ -244,13 +244,14 @@ balloc(int used)
   int i;
 
   printf("balloc: first %d blocks have been allocated\n", used);
-  assert(used < BPB);
-  bzero(buf, BSIZE);
-  for (i = 0; i < used; i++) {
-    buf[i / 8] = buf[i / 8] | (0x1 << (i % 8));
+  assert(used <= FSSIZE);
+  for (int base = 0; base < used; base += BPB) {
+    bzero(buf, BSIZE);
+    for (i = 0; i < BPB && base + i < used; i++)
+      buf[i / 8] |= 1 << (i % 8);
+    wsect(sb.bmapstart + base / BPB, buf);
   }
   printf("balloc: write bitmap block at sector %d\n", sb.bmapstart);
-  wsect(sb.bmapstart, buf);
 }
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -262,7 +263,7 @@ iappend(uint inum, void *xp, int n)
   uint fbn, off, n1;
   struct dinode din;
   char buf[BSIZE];
-  uint indirect[NINDIRECT];
+  uint indirect[NINDIRECT], inner[NINDIRECT];
   uint x;
 
   rinode(inum, &din);
@@ -276,7 +277,7 @@ iappend(uint inum, void *xp, int n)
         din.addrs[fbn] = xint(freeblock++);
       }
       x = xint(din.addrs[fbn]);
-    } else {
+    } else if (fbn < NDIRECT + NINDIRECT) {
       if (xint(din.addrs[NDIRECT]) == 0) {
         din.addrs[NDIRECT] = xint(freeblock++);
       }
@@ -286,6 +287,22 @@ iappend(uint inum, void *xp, int n)
         wsect(xint(din.addrs[NDIRECT]), (char *)indirect);
       }
       x = xint(indirect[fbn - NDIRECT]);
+    } else {
+      uint bn = fbn - NDIRECT - NINDIRECT;
+      uint first = bn / NINDIRECT, second = bn % NINDIRECT;
+      if (xint(din.addrs[NDIRECT + 1]) == 0)
+        din.addrs[NDIRECT + 1] = xint(freeblock++);
+      rsect(xint(din.addrs[NDIRECT + 1]), (char *)indirect);
+      if (indirect[first] == 0) {
+        indirect[first] = xint(freeblock++);
+        wsect(xint(din.addrs[NDIRECT + 1]), (char *)indirect);
+      }
+      rsect(xint(indirect[first]), (char *)inner);
+      if (inner[second] == 0) {
+        inner[second] = xint(freeblock++);
+        wsect(xint(indirect[first]), (char *)inner);
+      }
+      x = xint(inner[second]);
     }
     n1 = min(n, (fbn + 1) * BSIZE - off);
     rsect(x, buf);

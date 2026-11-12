@@ -151,6 +151,12 @@ filewrite(struct file *f, uint64 addr, int n)
     // i-node, indirect block, allocation blocks,
     // and 2 blocks of slop for non-aligned writes.
     int max = ((MAXOPBLOCKS - 1 - 1 - 2) / 2) * BSIZE;
+#ifdef LAB_FS
+    // The larger reservation is for fragmented truncation, not larger
+    // write batches. Keep room for both indirect levels and their bitmaps.
+    if (max > 3 * BSIZE)
+      max = 3 * BSIZE;
+#endif
     int i = 0;
     while (i < n) {
       int n1 = n - i;
