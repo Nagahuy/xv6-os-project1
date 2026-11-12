@@ -156,13 +156,65 @@ vmprint(pagetable_t pagetable)
 #endif
 
 
+#ifdef LAB_PGTBL
+static int
+kmappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
+{
+  if (va % PGSIZE != 0)
+    panic("mappages: va not aligned");
+  if (size % PGSIZE != 0)
+    panic("mappages: size not aligned");
+  if (size == 0)
+    panic("mappages: size");
+
+  while (size > 0) {
+    uint64 step = PGSIZE;
+
+    if (va >= MAXVA)
+      panic("walk");
+    if (va % SUPERPGSIZE == 0 && pa % SUPERPGSIZE == 0 &&
+        size >= SUPERPGSIZE) {
+      pte_t *pte = &pagetable[PX(2, va)];
+      pagetable_t level1;
+
+      if (*pte & PTE_V) {
+        if (PTE_LEAF(*pte))
+          panic("mappages: remap");
+        level1 = (pagetable_t)PTE2PA(*pte);
+      } else {
+        if ((level1 = (pagetable_t)kalloc()) == 0)
+          return -1;
+        memset(level1, 0, PGSIZE);
+        *pte = PA2PTE(level1) | PTE_V;
+      }
+
+      pte = &level1[PX(1, va)];
+      if (*pte & PTE_V)
+        panic("mappages: remap");
+      *pte = PA2PTE(pa) | perm | PTE_V;
+      step = SUPERPGSIZE;
+    } else if (mappages(pagetable, va, PGSIZE, pa, perm) != 0) {
+      return -1;
+    }
+    va += step;
+    pa += step;
+    size -= step;
+  }
+  return 0;
+}
+#endif
+
 // add a mapping to the kernel page table.
 // only used when booting.
 // does not flush TLB or enable paging.
 void
 kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 {
+#ifdef LAB_PGTBL
+  if (kmappages(kpgtbl, va, sz, pa, perm) != 0)
+#else
   if (mappages(kpgtbl, va, sz, pa, perm) != 0)
+#endif
     panic("kvmmap");
 }
 
