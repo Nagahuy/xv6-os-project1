@@ -26,6 +26,7 @@ int pause(int);
 int uptime(void);
 int sync(void);
 int consolemode(int raw); // 1: character input without echo; 0: normal input.
+int symlink(const char *target, const char *path);
 
 // ulib.c
 int stat(const char *, struct stat *);

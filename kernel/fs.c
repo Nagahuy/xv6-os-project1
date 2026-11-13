@@ -412,7 +412,8 @@ ireclaim(int dev)
 // The content (data) associated with each inode is stored
 // in blocks on the disk. The first NDIRECT block numbers
 // are listed in ip->addrs[].  The next NINDIRECT blocks are
-// listed in block ip->addrs[NDIRECT].
+// listed in block ip->addrs[NDIRECT]. The remaining blocks are reached
+// through two levels of indices rooted at ip->addrs[NDIRECT + 1].
 
 // Return the disk block address of the nth block in inode ip.
 // If there is no such block, bmap allocates one.
@@ -455,6 +456,39 @@ bmap(struct inode *ip, uint bn)
     return addr;
   }
 
+  bn -= NINDIRECT;
+  if (bn < NINDIRECT * NINDIRECT) {
+    if ((addr = ip->addrs[NDIRECT + 1]) == 0) {
+      if ((addr = balloc(ip->dev)) == 0)
+        return 0;
+      ip->addrs[NDIRECT + 1] = addr;
+    }
+    bp = bread(ip->dev, addr);
+    a = (uint *)bp->data;
+    uint outer = bn / NINDIRECT;
+    if ((addr = a[outer]) == 0) {
+      if ((addr = balloc(ip->dev)) == 0) {
+        brelse(bp);
+        return 0;
+      }
+      a[outer] = addr;
+      log_write(bp);
+    }
+    brelse(bp);
+
+    bp = bread(ip->dev, addr);
+    a = (uint *)bp->data;
+    uint inner = bn % NINDIRECT;
+    if ((addr = a[inner]) == 0) {
+      if ((addr = balloc(ip->dev)) != 0) {
+        a[inner] = addr;
+        log_write(bp);
+      }
+    }
+    brelse(bp);
+    return addr;
+  }
+
   panic("bmap: out of range");
 }
 
@@ -484,6 +518,25 @@ itrunc(struct inode *ip)
     brelse(bp);
     bfree(ip->dev, ip->addrs[NDIRECT]);
     ip->addrs[NDIRECT] = 0;
+  }
+
+  if (ip->addrs[NDIRECT + 1]) {
+    bp = bread(ip->dev, ip->addrs[NDIRECT + 1]);
+    a = (uint *)bp->data;
+    for (i = 0; i < NINDIRECT; i++) {
+      if (a[i]) {
+        struct buf *inner = bread(ip->dev, a[i]);
+        uint *entries = (uint *)inner->data;
+        for (j = 0; j < NINDIRECT; j++)
+          if (entries[j])
+            bfree(ip->dev, entries[j]);
+        brelse(inner);
+        bfree(ip->dev, a[i]);
+      }
+    }
+    brelse(bp);
+    bfree(ip->dev, ip->addrs[NDIRECT + 1]);
+    ip->addrs[NDIRECT + 1] = 0;
   }
 
   ip->size = 0;

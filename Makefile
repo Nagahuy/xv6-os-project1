@@ -262,7 +262,8 @@ endif
 
 ifeq ($(LAB),fs)
 UPROGS += \
-	$U/_bigfile
+	$U/_bigfile\
+	$U/_symlinktest
 endif
 
 
@@ -323,7 +324,13 @@ FWDPORT2 = $(shell expr `id -u` % 5000 + 30999)
 
 QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
+ifeq ($(LAB),fs)
+# Match the fs lab's disk cache setting for large-file tests.
+QEMU_CACHE ?= unsafe
+QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0,cache=$(QEMU_CACHE)
+else
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
+endif
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
 ifeq ($(LAB),net)
