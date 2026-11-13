@@ -326,7 +326,8 @@ QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nogr
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 ifeq ($(LAB),fs)
 # Match the fs lab's disk cache setting for large-file tests.
-QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0,cache=unsafe
+QEMU_CACHE ?= unsafe
+QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0,cache=$(QEMU_CACHE)
 else
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 endif
