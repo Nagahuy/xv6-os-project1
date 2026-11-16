@@ -134,6 +134,7 @@ def recover_log():
 
 def forphan():
     q = QEMU(True)
+    q.monitor(r'^\$ ', timeout=30)
     q.cmd("forphan\n")
     time.sleep(5)
     q.read()
@@ -143,6 +144,7 @@ def forphan():
 
 def dorphan():
     q = QEMU(True)
+    q.monitor(r'^\$ ', timeout=30)
     q.cmd("dorphan\n")
     time.sleep(5)
     q.read()
