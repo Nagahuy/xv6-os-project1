@@ -356,7 +356,7 @@ sys_symlink(void)
 uint64
 sys_open(void)
 {
-  char path[MAXPATH];
+  char path[MAXPATH], target[MAXPATH];
   int fd, omode;
   struct file *f;
   struct inode *ip;
@@ -384,15 +384,29 @@ sys_open(void)
 
   int depth = 0;
   while (ip->type == T_SYMLINK && !(omode & O_NOFOLLOW)) {
-    // Relative targets are resolved from cwd, matching this lab's scope.
     uint len = ip->size;
-    if (depth++ >= 10 || len < 2 || len > sizeof(path) ||
-        readi(ip, 0, (uint64)path, 0, len) != len || path[len - 1] != 0 ||
-        strlen(path) != len - 1) {
+    if (depth++ >= 10 || len < 2 || len > sizeof(target) ||
+        readi(ip, 0, (uint64)target, 0, len) != len || target[len - 1] != 0 ||
+        strlen(target) != len - 1) {
       iunlockput(ip);
       end_op();
       return -1;
     }
+    // Resolve relative targets from this link's parent at each hop.
+    n = 0;
+    if (target[0] != '/') {
+      n = strlen(path);
+      while (n > 0 && path[n - 1] == '/')
+        n--;
+      while (n > 0 && path[n - 1] != '/')
+        n--;
+    }
+    if (n + len > sizeof(path)) {
+      iunlockput(ip);
+      end_op();
+      return -1;
+    }
+    memmove(path + n, target, len);
     iunlockput(ip);
     if ((ip = namei(path)) == 0) {
       end_op();
