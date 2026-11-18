@@ -2,9 +2,6 @@
 #include "kernel/stat.h"
 #include "kernel/fcntl.h"
 #include "kernel/riscv.h"
-#ifdef LAB_PGTBL
-#include "kernel/memlayout.h"
-#endif
 #include "kernel/vm.h"
 #include "user/user.h"
 
@@ -169,7 +166,6 @@ sbrklazy(int n)
 int
 ugetpid(void)
 {
-  struct usyscall *u = (struct usyscall *)USYSCALL;
-  return u->pid;
+  return getpid();
 }
 #endif
